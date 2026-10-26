@@ -1,0 +1,17 @@
+{
+  "SUPABASE_URL": "https://YOUR-PROJECT.supabase.co",
+  "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_xxx",
+  "GOOGLE_WEB_CLIENT_ID": "xxxx.apps.googleusercontent.com",
+  "GOOGLE_IOS_CLIENT_ID": "yyyy.apps.googleusercontent.com",
+  "RC_ANDROID_KEY": "goog_xxx",
+  "RC_IOS_KEY": "appl_xxx",
+  "RC_ENTITLEMENT": "premium",
+  "PRIVACY_URL": "https://clearskin.ai/privacy",
+  "TERMS_URL": "https://clearskin.ai/terms",
+  "SUPPORT_EMAIL": "support@clearskin.ai",
+  "OPEN_METEO_KEY": "",
+  "POSTHOG_KEY": "phc_xxx",
+  "POSTHOG_HOST": "https://eu.i.posthog.com",
+  "APP_VERSION": "1.0.0",
+  "AI_DEMO": "false"
+}
