@@ -1,0 +1,177 @@
+import 'dart:math' as math;
+
+/// What the live camera should tell the user right now. Ordered by priority:
+/// the first problem found is the one shown, so instructions never compete.
+enum LiveHint {
+  noFace('Fit your face inside the oval'),
+  multipleFaces('Only your face in the frame'),
+  faceCut('Bring your whole face into view'),
+  tooDark('Find more light — face a window'),
+  backlit('Light is behind you — turn to face it'),
+  tooBright('Too bright — step out of direct sun'),
+  unevenLight('Light is on one side — face it straight on'),
+  moveCloser('Move a little closer'),
+  moveBack('Move back a little'),
+  center('Center your face in the oval'),
+  lookStraight('Look straight at the camera'),
+  levelChin('Keep your chin level'),
+  openEyes('Keep your eyes open'),
+  holdStill('Hold still'),
+  aligned('Perfect — hold it there');
+
+  const LiveHint(this.message);
+  final String message;
+
+  bool get ready => this == LiveHint.aligned;
+
+  /// Which of the three on-screen checks this hint belongs to.
+  LiveCheck? get check => switch (this) {
+    tooDark || backlit || tooBright || unevenLight => LiveCheck.light,
+    noFace ||
+    multipleFaces ||
+    faceCut ||
+    moveCloser ||
+    moveBack ||
+    center ||
+    lookStraight ||
+    levelChin => LiveCheck.position,
+    openEyes || holdStill => LiveCheck.still,
+    aligned => null,
+  };
+}
+
+/// The three things a good scan needs, shown as quiet words that light up.
+enum LiveCheck {
+  light('Light'),
+  position('Position'),
+  still('Still');
+
+  const LiveCheck(this.label);
+  final String label;
+}
+
+/// One analysed camera frame, in upright (portrait) coordinates.
+class LiveFrame {
+  const LiveFrame({
+    required this.faceCount,
+    required this.luminance,
+    this.faceLuminance,
+    this.sideBalance,
+    this.faceWidth,
+    this.centerX,
+    this.centerY,
+    this.yaw,
+    this.roll,
+    this.pitch,
+    this.cutOff = false,
+    this.eyesOpen,
+    this.motion,
+  });
+
+  final int faceCount;
+
+  /// Mean frame luminance, 0..255.
+  final double luminance;
+
+  /// Mean luminance over the face box only, 0..255. The face is what has to
+  /// be lit: a bright window behind a dark face is still a dark face.
+  final double? faceLuminance;
+
+  /// Mean luminance of the face's left half over its right half. ~1 = even.
+  final double? sideBalance;
+
+  /// Face box width as a fraction of frame width.
+  final double? faceWidth;
+
+  /// Face centre as fractions of frame width/height.
+  final double? centerX;
+  final double? centerY;
+  final double? yaw;
+  final double? roll;
+  final double? pitch;
+
+  /// The face box runs past an edge of the frame.
+  final bool cutOff;
+
+  /// The less-open eye's open probability, 0..1.
+  final double? eyesOpen;
+
+  /// How far the face centre moved since the last frame, as a fraction of
+  /// frame width.
+  final double? motion;
+}
+
+/// Live thresholds are a little looser than the post-capture checks
+/// ([CaptureQuality]) so the guide feels helpful rather than fussy; the
+/// final photo is still validated strictly.
+abstract final class LiveGuidance {
+  /// Where the on-screen oval sits (fraction of frame height).
+  static const targetY = 0.45;
+
+  static LiveHint evaluate(LiveFrame f) {
+    if (f.faceCount == 0) return LiveHint.noFace;
+    if (f.faceCount > 1) return LiveHint.multipleFaces;
+    if (f.cutOff) return LiveHint.faceCut;
+
+    final face = f.faceLuminance ?? f.luminance;
+    if (face < 60) return LiveHint.tooDark;
+    // Background much brighter than a dim face: a window or lamp behind.
+    if (f.faceLuminance != null && face < 115 && f.luminance - face > 40) {
+      return LiveHint.backlit;
+    }
+    if (face > 210) return LiveHint.tooBright;
+    final balance = f.sideBalance;
+    if (balance != null && balance > 0) {
+      if (math.max(balance, 1 / balance) > 1.5) return LiveHint.unevenLight;
+    }
+
+    final w = f.faceWidth;
+    if (w != null && w < 0.36) return LiveHint.moveCloser;
+    if (w != null && w > 0.80) return LiveHint.moveBack;
+    final cx = f.centerX, cy = f.centerY;
+    if ((cx != null && (cx - 0.5).abs() > 0.13) ||
+        (cy != null && (cy - targetY).abs() > 0.14)) {
+      return LiveHint.center;
+    }
+    if ((f.yaw?.abs() ?? 0) > 12 || (f.roll?.abs() ?? 0) > 10) {
+      return LiveHint.lookStraight;
+    }
+    if ((f.pitch?.abs() ?? 0) > 14) return LiveHint.levelChin;
+    if ((f.eyesOpen ?? 1) < 0.35) return LiveHint.openEyes;
+    if ((f.motion ?? 0) > 0.025) return LiveHint.holdStill;
+    return LiveHint.aligned;
+  }
+
+  /// Which checks pass, given the current hint. Checks are ordered, so a
+  /// failing light check says nothing yet about position or stillness.
+  static Set<LiveCheck> passed(LiveHint hint) {
+    final failing = hint.check;
+    if (failing == null) return LiveCheck.values.toSet();
+    return {
+      for (final c in LiveCheck.values)
+        if (c.index < failing.index) c,
+    };
+  }
+
+  /// How long the face must stay aligned before auto-capture.
+  static const holdDuration = Duration(milliseconds: 1300);
+
+  /// Maps an upright (displayed) pixel to the camera sensor's buffer, given
+  /// the clockwise rotation (0/90/180/270) that turns the sensor image
+  /// upright. [w] and [h] are the sensor buffer's width and height.
+  static (int, int) uprightToSensor(
+    double ux,
+    double uy,
+    int w,
+    int h,
+    int rotation,
+  ) {
+    final (sx, sy) = switch (rotation) {
+      90 => (uy, h - 1 - ux),
+      180 => (w - 1 - ux, h - 1 - uy),
+      270 => (w - 1 - uy, ux),
+      _ => (ux, uy),
+    };
+    return (sx.round().clamp(0, w - 1), sy.round().clamp(0, h - 1));
+  }
+}
