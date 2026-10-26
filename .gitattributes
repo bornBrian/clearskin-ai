@@ -1,0 +1,18 @@
+# Normalise line endings in the repo; check out with the platform's own.
+* text=auto
+
+# Shell and Gradle wrapper scripts must keep LF / CRLF exactly.
+*.sh text eol=lf
+gradlew text eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ttf binary
+*.otf binary
+*.jar binary
+*.mp4 binary
