@@ -1,0 +1,36 @@
+// POST /functions/v1/delete-account
+// Permanently deletes the caller's server-side data: usage records, the
+// RevenueCat customer record, and the auth user. Required by Google Play's
+// account-deletion policy. Store subscriptions must still be cancelled by the
+// user in Google Play / App Store (stores don't allow apps to cancel them).
+
+import { adminClient, errorResponse, json, requireUser } from "../_shared/common.ts";
+
+Deno.serve(async (req) => {
+  if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+  try {
+    const userId = await requireUser(req);
+    const admin = adminClient();
+
+    const { error: usageErr } = await admin.from("usage_events").delete().eq("user_id", userId);
+    if (usageErr) throw usageErr;
+
+    const rcSecret = Deno.env.get("REVENUECAT_SECRET_KEY");
+    if (rcSecret) {
+      const res = await fetch(
+        `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(userId)}`,
+        { method: "DELETE", headers: { Authorization: `Bearer ${rcSecret}` } },
+      );
+      if (!res.ok && res.status !== 404) {
+        console.error("RevenueCat delete failed", res.status);
+      }
+    }
+
+    const { error: authErr } = await admin.auth.admin.deleteUser(userId);
+    if (authErr) throw authErr;
+
+    return json({ deleted: true });
+  } catch (err) {
+    return errorResponse(err);
+  }
+});

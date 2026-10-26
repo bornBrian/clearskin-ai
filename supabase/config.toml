@@ -1,0 +1,17 @@
+# Supabase project config (used by `supabase start` / `supabase functions deploy`).
+project_id = "clearskin-ai"
+
+[auth]
+# Anonymous sign-in gives every install a private user id with zero friction.
+enable_anonymous_sign_ins = true
+
+# Functions verify the caller's JWT themselves (supports both legacy and new
+# asymmetric signing keys), so gateway verification is disabled.
+[functions.analyze-skin]
+verify_jwt = false
+
+[functions.coach]
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = false
