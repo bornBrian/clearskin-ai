@@ -3,7 +3,7 @@ description: "ClearSkin AI - your personal AI skin coach."
 publish_to: 'none'
 
 # versionName+versionCode. Bump the build number (after +) on every Play upload.
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.13.4

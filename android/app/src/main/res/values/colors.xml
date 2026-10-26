@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="brand_background">#F7F5F2</color>
+    <!-- Launch screen: the brand's charcoal, in light and dark mode alike. -->
+    <color name="splash_background">#232321</color>
 </resources>

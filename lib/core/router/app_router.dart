@@ -27,6 +27,8 @@ import '../../features/settings/reminders_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/shell/app_shell.dart';
 import '../providers.dart';
+import '../theme/tokens.dart';
+import '../widgets/widgets.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
 
@@ -66,7 +68,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/loading',
-        builder: (_, _) => const Scaffold(body: SizedBox.expand()),
+        // Continues the native launch screen exactly: charcoal, the mark
+        // centred, so the handoff to the app is seamless.
+        builder: (_, _) => const Scaffold(
+          backgroundColor: BrandColors.charcoal,
+          body: Center(child: BrandMark(size: 112, color: BrandColors.cream)),
+        ),
       ),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingFlow()),
       GoRoute(

@@ -121,6 +121,18 @@ class AuthService {
       return await _save(account);
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
+        // Android reports an app whose signing key isn't registered with
+        // Google as a "cancel" after the account is chosen ([16] Account
+        // reauth failed / [10] developer error). Say so, rather than
+        // silently dropping the person back on the sign-in screen.
+        final why = e.description ?? '';
+        if (why.contains('[16]') ||
+            why.contains('[10]') ||
+            why.toLowerCase().contains('reauth')) {
+          throw const AuthFailure(
+            'Google sign-in isn\'t set up for this app version yet. Try email instead.',
+          );
+        }
         throw const AuthFailure('', cancelled: true);
       }
       debugPrint('Google sign-in failed: ${e.code} ${e.description}');
