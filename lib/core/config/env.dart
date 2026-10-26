@@ -34,15 +34,15 @@ abstract final class Env {
 
   static const privacyPolicyUrl = String.fromEnvironment(
     'PRIVACY_URL',
-    defaultValue: 'https://clearskin.ai/privacy',
+    defaultValue: 'https://bornbrian.github.io/clearskin/privacy.html',
   );
   static const termsUrl = String.fromEnvironment(
     'TERMS_URL',
-    defaultValue: 'https://clearskin.ai/terms',
+    defaultValue: 'https://bornbrian.github.io/clearskin/terms.html',
   );
   static const supportEmail = String.fromEnvironment(
     'SUPPORT_EMAIL',
-    defaultValue: 'support@clearskin.ai',
+    defaultValue: 'bonbrian2@gmail.com',
   );
 
   /// Open-Meteo is free for non-commercial use only. Once the app earns

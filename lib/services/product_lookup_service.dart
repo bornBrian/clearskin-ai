@@ -11,7 +11,7 @@ class ProductLookupService {
   final http.Client _http;
 
   static const _userAgent =
-      'ClearSkinAI/1.0 (Android/iOS; support@clearskin.ai)';
+      'ClearSkinAI/1.0 (Android/iOS; bonbrian2@gmail.com)';
 
   Future<ProductDraft?> byBarcode(String barcode) async {
     final code = barcode.replaceAll(RegExp(r'\D'), '');
