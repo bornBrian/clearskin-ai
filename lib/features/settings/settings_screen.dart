@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/config/app_store.dart';
 import '../../core/config/env.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
@@ -26,9 +27,11 @@ final _adPrivacyRequiredProvider = FutureProvider<bool>(
 
 String _planLine(SubscriptionInfo? sub) {
   final end = sub?.expiresAt;
-  if (sub == null || end == null) return 'Manage in Google Play';
+  if (sub == null || end == null) return 'Manage ${AppStore.manageIn}';
   final date = DateFormat('d MMM y').format(end);
-  if (sub.billingIssue) return 'Payment problem. Tap to fix in Google Play';
+  if (sub.billingIssue) {
+    return 'Payment problem. Tap to fix ${AppStore.manageIn}';
+  }
   if (sub.isTrial) return 'Free trial until $date';
   return sub.willRenew ? 'Renews $date' : 'Ends $date. Tap to renew';
 }
@@ -66,7 +69,7 @@ class SettingsScreen extends ConsumerWidget {
             child: AppCard(
               onTap: premium
                   ? () => launchUrl(
-                      playSubscriptionsUri(sub),
+                      storeSubscriptionsUri(sub),
                       mode: LaunchMode.externalApplication,
                     )
                   : () => context.push('/paywall?source=settings'),
@@ -186,8 +189,10 @@ class SettingsScreen extends ConsumerWidget {
           SwitchListTile(
             secondary: const Icon(Icons.lock_outline_rounded),
             title: const Text('App lock'),
-            subtitle: const Text(
-              'Fingerprint, face or PIN to open. Also hides ClearSkin in recent apps and blocks screenshots.',
+            subtitle: Text(
+              AppStore.isApple
+                  ? 'Face ID or passcode to open. Also hides ClearSkin in the app switcher.'
+                  : 'Fingerprint, face or PIN to open. Also hides ClearSkin in recent apps and blocks screenshots.',
             ),
             value: lock,
             onChanged: (v) async {
@@ -319,7 +324,7 @@ class SettingsScreen extends ConsumerWidget {
       title: 'Delete everything?',
       body:
           'This permanently deletes your profile, scans, photos, check-ins, products and chat — on this phone and on our servers. '
-          'An active subscription is NOT cancelled automatically: cancel it in Google Play.',
+          'An active subscription is NOT cancelled automatically: cancel it ${AppStore.manageIn}.',
       confirmLabel: 'Delete everything',
       destructive: true,
     );

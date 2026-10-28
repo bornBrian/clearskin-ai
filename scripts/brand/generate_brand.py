@@ -12,6 +12,7 @@ Outputs:
   assets/brand/        SVG masters + PNGs used inside the app
   android mipmaps      legacy + adaptive (foreground/monochrome) launcher icons
   ios AppIcon          every size listed in Contents.json
+  ios LaunchImage      the cream mark for the charcoal launch screen
   docs/store/          Play Store icon (512) + feature graphic (1024x500)
 """
 
@@ -147,6 +148,15 @@ def write_notification_icon(res: Path) -> None:
         '</vector>\n')
 
 
+def write_ios_launch(root: Path) -> None:
+    """Launch screen mark, matching Android's: cream C·skin, transparent,
+    drawn at 120pt on the storyboard's charcoal background."""
+    out = root / "ios/Runner/Assets.xcassets/LaunchImage.imageset"
+    for scale, name in ((1, "LaunchImage.png"), (2, "LaunchImage@2x.png"),
+                        (3, "LaunchImage@3x.png")):
+        mark_png(120 * scale, bg=None, fg=CREAM).save(out / name)
+
+
 def main() -> None:
     brand = ROOT / "assets/brand"
     brand.mkdir(parents=True, exist_ok=True)
@@ -200,6 +210,7 @@ def main() -> None:
         pt = float(entry["size"].split("x")[0])
         px = int(round(pt * int(entry["scale"].rstrip("x"))))
         mark_png(px, bg=CHARCOAL, fg=CREAM, scale=0.86).convert("RGB").save(icon_set / fname)
+    write_ios_launch(ROOT)
 
     # Store assets.
     store = ROOT / "docs/store"

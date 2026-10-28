@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -161,7 +162,7 @@ class _ShelfLifeRow extends StatelessWidget {
   final Future<void> Function(Product) onChanged;
 
   Future<void> _pickOpened(BuildContext context) async {
-    final now = DateTime.now();
+    final now = clock.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: product.openedAt ?? now,
@@ -182,7 +183,7 @@ class _ShelfLifeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final useBy = ShelfLife.useBy(product);
-    final fresh = ShelfLife.freshness(product, DateTime.now());
+    final fresh = ShelfLife.freshness(product, clock.now());
     final date = DateFormat('d MMM y');
     if (product.openedAt == null) {
       return LineItem(

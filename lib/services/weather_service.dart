@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/config/env.dart';
@@ -38,7 +39,7 @@ class WeatherService {
         cached['snapshot'] as Map<String, dynamic>,
       );
       final sameLoc = cached['loc'] == loc.name;
-      if (sameLoc && DateTime.now().difference(snap.fetchedAt) < _ttl) {
+      if (sameLoc && clock.now().difference(snap.fetchedAt) < _ttl) {
         return snap;
       }
     }
@@ -96,7 +97,7 @@ class WeatherService {
         humidity: (current['relative_humidity_2m'] as num).toDouble(),
         temperatureC: (current['temperature_2m'] as num).toDouble(),
         usAqi: aqi,
-        fetchedAt: DateTime.now(),
+        fetchedAt: clock.now(),
       );
       await _kv.setJson(KvKeys.weather, {
         'loc': loc.name,
@@ -114,7 +115,7 @@ class WeatherService {
       cached['snapshot'] as Map<String, dynamic>,
     );
     // Stale-but-same-day data is still useful; older is misleading.
-    return DateTime.now().difference(snap.fetchedAt) < const Duration(hours: 18)
+    return clock.now().difference(snap.fetchedAt) < const Duration(hours: 18)
         ? snap
         : null;
   }

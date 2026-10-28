@@ -1,0 +1,38 @@
+# Proves the iPhone app compiles (Swift, CocoaPods, Xcode project), unsigned.
+# macOS minutes cost 10x on private repos, so this runs only when iOS files
+# or dependencies change, or by hand (Actions → iOS build → Run workflow).
+name: iOS build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build (no signing)
+        run: flutter build ios --release --no-codesign --dart-define-from-file=env/example.json
+      - name: Check the privacy manifest and entitlements are bundled
+        run: |
+          app=build/ios/iphoneos/Runner.app
+          test -f "$app/PrivacyInfo.xcprivacy"
+          for s in chime evening milestone morning streak; do test -f "$app/clearskin_$s.wav"; done
+          plutil -lint "$app/Info.plist"

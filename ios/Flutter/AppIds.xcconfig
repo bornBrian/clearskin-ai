@@ -1,0 +1,11 @@
+// Public app IDs read by Info.plist. None of these are secrets (they ship
+// inside every copy of the app); fill them in at launch, see
+// docs/LAUNCH_APPSTORE.md.
+
+// AdMob → Apps → ClearSkin (iOS) → App ID. Google's sample ID until then,
+// which only ever serves test ads.
+ADMOB_IOS_APP_ID = ca-app-pub-3940256099942544~1458002511
+
+// Google Cloud → Credentials → iOS OAuth client → "iOS URL scheme"
+// (com.googleusercontent.apps.…). Empty keeps Google sign-in hidden on iOS.
+GOOGLE_IOS_URL_SCHEME =

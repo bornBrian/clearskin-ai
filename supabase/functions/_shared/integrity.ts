@@ -1,21 +1,24 @@
-// Play Integrity (standard requests): proves a call comes from the genuine
-// ClearSkin app, installed from Google Play, on a real Android device. This
-// is what stops patched/re-signed APKs and scripts that replay the public
+// Proves a call comes from the genuine ClearSkin app on a real phone: Play
+// Integrity (standard requests) on Android, App Attest on iPhone. This is
+// what stops patched/re-signed apps and scripts that replay the public
 // Supabase key from spending our Claude budget.
 //
-// The app asks Google for a token bound to a request hash
+// The app binds its proof to a request hash
 //   sha256("<user id>|<function>|<x-cs-ts>")
-// and sends it in `x-cs-integrity`. Here we have Google decrypt it and
-// check the verdicts.
+// and sends it in `x-cs-integrity`: a Play Integrity token, which Google
+// decrypts for us, or "ios.<key id>.<assertion>", checked in app_attest.ts
+// against the key the app registered.
 //
 // INTEGRITY_MODE:
 //   off      - skip (local development)
 //   log      - check and log, never block (default; use while testing
 //              sideloaded builds, which Google reports as unrecognised)
 //   enforce  - reject anything that isn't a Play-recognised app on a
-//              device that meets integrity (use from the production launch)
+//              device that meets integrity, or an attested iPhone app
+//              (use from the production launch)
 
-import { HttpError } from "./common.ts";
+import { AttestError, clientDataHash, verifyAssertion } from "./app_attest.ts";
+import { adminClient, HttpError } from "./common.ts";
 
 type Mode = "off" | "log" | "enforce";
 
@@ -52,7 +55,7 @@ export async function requireIntegrity(req: Request, userId: string, fn: string)
       throw new HttpError(
         403,
         "integrity",
-        "This copy of ClearSkin can't be verified. Please install it from Google Play.",
+        "This copy of ClearSkin can't be verified. Please install it from the App Store or Google Play.",
       );
     }
     console.warn(`integrity(${fn}) would block: ${why}`);
@@ -66,6 +69,11 @@ export async function requireIntegrity(req: Request, userId: string, fn: string)
   }
 
   if (token.length > 8000 || !/^[A-Za-z0-9._-]+$/.test(token)) return fail("malformed token");
+
+  if (token.startsWith("ios.")) {
+    const why = await checkAppAttest(token, userId, fn, ts);
+    return why ? fail(why) : undefined;
+  }
 
   let verdict: Verdict;
   try {
@@ -93,6 +101,57 @@ export async function requireIntegrity(req: Request, userId: string, fn: string)
   if (!device.includes("MEETS_DEVICE_INTEGRITY")) {
     return fail(`device ${device.join(",") || "none"}`);
   }
+}
+
+/** Null when the assertion is good; otherwise why not. Database errors fail
+ * open, like a Google outage. */
+async function checkAppAttest(token: string, userId: string, fn: string, ts: number): Promise<string | null> {
+  const [, keyId, assertion, extra] = token.split(".");
+  if (!keyId || !assertion || extra !== undefined || !/^[A-Za-z0-9_-]{43}$/.test(keyId)) {
+    return "malformed App Attest token";
+  }
+  const db = adminClient();
+  const { data: key, error } = await db.from("app_attest_keys")
+    .select("public_key, sign_count")
+    .eq("key_id", keyId)
+    .maybeSingle();
+  if (error) {
+    console.error("App Attest key lookup failed", error.message);
+    return null;
+  }
+  if (!key) return "unknown App Attest key";
+  let counter: number;
+  try {
+    counter = await verifyAssertion(
+      assertion,
+      hexToBytes(key.public_key as string),
+      Number(key.sign_count),
+      await clientDataHash(userId, fn, ts),
+    );
+  } catch (err) {
+    if (err instanceof AttestError) return err.message;
+    console.error("App Attest check failed", err);
+    return null;
+  }
+  // Only a higher counter is stored, in one statement: two calls racing
+  // with the same assertion can't both get through.
+  const { data: bumped, error: bumpError } = await db.from("app_attest_keys")
+    .update({ sign_count: counter, last_used_at: new Date().toISOString() })
+    .eq("key_id", keyId)
+    .lt("sign_count", counter)
+    .select("key_id");
+  if (bumpError) {
+    console.error("App Attest counter update failed", bumpError.message);
+    return null;
+  }
+  return bumped?.length ? null : "replayed assertion";
+}
+
+/** PostgREST returns bytea as "\x<hex>". */
+function hexToBytes(value: string): Uint8Array<ArrayBuffer> {
+  const hex = value.startsWith("\\x") ? value.slice(2) : value;
+  if (!/^(?:[0-9a-f]{2})+$/i.test(hex)) throw new Error("stored key isn't hex");
+  return Uint8Array.from(hex.match(/../g)!, (h) => parseInt(h, 16));
 }
 
 interface Verdict {

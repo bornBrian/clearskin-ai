@@ -47,6 +47,7 @@ import 'package:clearskin_ai/services/purchases_service.dart';
 import 'package:clearskin_ai/services/telemetry.dart';
 import 'package:clearskin_ai/features/onboarding/plan_reveal_screen.dart';
 import 'package:clearskin_ai/features/tips/tips_widgets.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -184,7 +185,9 @@ SkinAnalysis _analysis(int base) => SkinAnalysis(
   ],
 );
 
-final _now = DateTime.now();
+// Renders are taken at a fixed moment (a Wednesday morning), so the
+// greeting, dates and streaks are the same whenever they're run.
+final _now = DateTime(2026, 10, 28, 9, 30);
 
 // A sample selfie with landmarks detected by a real face-landmark model
 // (scripts: see tool/screenshots/fixtures/README.md). Test-only; never
@@ -413,7 +416,7 @@ Widget _app({
       chatProvider.overrideWith(_Chat.new),
       accountProvider.overrideWith(_Account.new),
       previousOpenProvider.overrideWith(
-        (ref) async => DateTime.now().subtract(const Duration(hours: 20)),
+        (ref) async => _now.subtract(const Duration(hours: 20)),
       ),
       purchasesServiceProvider.overrideWithValue(_Purchases()),
       // No ad network in renders.
@@ -427,7 +430,7 @@ Widget _app({
           humidity: 58,
           temperatureC: 24,
           usAqi: 42,
-          fetchedAt: DateTime.now(),
+          fetchedAt: _now,
         ),
       ),
     ],
@@ -511,7 +514,10 @@ Future<void> _warmSamplePhoto(WidgetTester tester) async {
 /// overflow fails the test. The stress pass testers do by hand.
 final _qa = Platform.environment['QA'];
 
-Future<void> _shot(WidgetTester tester, Widget app, String name) async {
+Future<void> _shot(WidgetTester tester, Widget app, String name) =>
+    withClock(Clock.fixed(_now), () => _shotNow(tester, app, name));
+
+Future<void> _shotNow(WidgetTester tester, Widget app, String name) async {
   if (_qa == 'small') {
     final tall = tester.view.physicalSize.height / tester.view.devicePixelRatio;
     tester.view

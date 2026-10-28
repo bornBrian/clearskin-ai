@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -80,7 +81,7 @@ class _ClearSkinAppState extends ConsumerState<ClearSkinApp>
   Future<void> _recordFirstOpen() async {
     final kv = ref.read(kvProvider);
     if (await kv.get(KvKeys.firstOpen) == null) {
-      await kv.set(KvKeys.firstOpen, DateTime.now().toIso8601String());
+      await kv.set(KvKeys.firstOpen, clock.now().toIso8601String());
     }
   }
 
@@ -107,14 +108,14 @@ class _ClearSkinAppState extends ConsumerState<ClearSkinApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      _backgroundedAt = DateTime.now();
+      _backgroundedAt = clock.now();
     } else if (state == AppLifecycleState.resumed) {
       unawaited(ref.read(purchasesServiceProvider).refresh());
       // Re-plans renewal reminders against today's date.
       ref.invalidate(renewalPlanProvider);
       final away = _backgroundedAt == null
           ? Duration.zero
-          : DateTime.now().difference(_backgroundedAt!);
+          : clock.now().difference(_backgroundedAt!);
       if (away > const Duration(seconds: 60)) {
         unawaited(_relockIfEnabled());
       }

@@ -1,12 +1,14 @@
 // POST /functions/v1/delete-account
 // Permanently deletes the caller's server-side data: the RevenueCat
-// customer record, scan credits and the auth user. Usage rows are unlinked
+// customer record, ClearSkin's Sign in with Apple access (revoked at Apple,
+// as Apple requires), scan credits and the auth user. Usage rows are unlinked
 // (the foreign key sets user_id to null) rather than deleted, so a device's
 // free scans can't be reset by deleting and re-creating an account. They
 // hold no personal data and are purged after 90 days. Required by Google Play's
 // account-deletion policy. Store subscriptions must still be cancelled by the
 // user in Google Play / App Store (stores don't allow apps to cancel them).
 
+import { appleSignInConfigured, revokeToken } from "../_shared/apple_signin.ts";
 import { adminClient, errorResponse, json, requireUser } from "../_shared/common.ts";
 
 Deno.serve(async (req) => {
@@ -23,6 +25,19 @@ Deno.serve(async (req) => {
       );
       if (!res.ok && res.status !== 404) {
         console.error("RevenueCat delete failed", res.status);
+      }
+    }
+
+    // Best effort: a failure at Apple is logged, never blocks the deletion.
+    const { data: apple } = await admin.from("apple_tokens")
+      .select("refresh_token")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (apple?.refresh_token && appleSignInConfigured()) {
+      try {
+        if (!await revokeToken(apple.refresh_token)) console.error("Apple revoke refused");
+      } catch (err) {
+        console.error("Apple revoke failed", err);
       }
     }
 

@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/config/env.dart';
@@ -14,7 +18,7 @@ import '../data/repositories/repositories.dart';
 class Account {
   const Account({required this.provider, this.email, this.name});
 
-  /// "google" or "email".
+  /// "google", "apple" or "email".
   final String provider;
   final String? email;
   final String? name;
@@ -46,12 +50,12 @@ class AuthFailure implements Exception {
   String toString() => 'AuthFailure($message)';
 }
 
-/// Google and passwordless e-mail sign-in on top of the app's Supabase
-/// session.
+/// Google, Apple (iPhone) and passwordless e-mail sign-in on top of the
+/// app's Supabase session.
 ///
-/// Google *links* the identity to the existing anonymous session, so the
-/// user id — and therefore any RevenueCat purchase — stays the same. E-mail
-/// codes sign in to the e-mail's account (or create it).
+/// Google and Apple *link* the identity to the existing anonymous session,
+/// so the user id — and therefore any RevenueCat purchase — stays the same.
+/// E-mail codes sign in to the e-mail's account (or create it).
 ///
 /// Without a backend (debug demo mode) both flows succeed locally so every
 /// screen can be exercised.
@@ -60,6 +64,15 @@ class AuthService {
   final KeyValueStore _kv;
 
   bool _googleReady = false;
+
+  /// Google sign-in needs its own iOS client; without one the button is
+  /// hidden on iPhone rather than failing.
+  static bool get googleAvailable =>
+      !Platform.isIOS || Env.googleIosClientId.isNotEmpty;
+
+  /// Sign in with Apple: offered on iPhone, as Apple requires next to
+  /// Google sign-in.
+  static bool get appleAvailable => Platform.isIOS;
 
   Future<Account?> current() async {
     final j = await _kv.getJson(KvKeys.account);
@@ -95,29 +108,7 @@ class AuthService {
       // A real Google identity, verified by Google. Without the backend
       // (local testing) there's no server account to attach it to yet.
       if (!Env.hasBackend) return await _save(account);
-
-      final auth = Supabase.instance.client.auth;
-      final anon = auth.currentUser?.isAnonymous ?? false;
-      if (anon) {
-        try {
-          await auth.linkIdentityWithIdToken(
-            provider: OAuthProvider.google,
-            idToken: idToken,
-          );
-        } on AuthException {
-          // This Google account already belongs to a ClearSkin user (e.g.
-          // a reinstall): sign in to that account instead.
-          await auth.signInWithIdToken(
-            provider: OAuthProvider.google,
-            idToken: idToken,
-          );
-        }
-      } else {
-        await auth.signInWithIdToken(
-          provider: OAuthProvider.google,
-          idToken: idToken,
-        );
-      }
+      await _attach(OAuthProvider.google, idToken);
       return await _save(account);
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
@@ -149,6 +140,106 @@ class AuthService {
     } on SocketException {
       throw const AuthFailure('You\'re offline.');
     }
+  }
+
+  Future<Account> signInWithApple() async {
+    if (!Env.hasBackend) return _demo('apple', 'you@icloud.com');
+    // Apple signs a hash of the nonce into the token; Supabase checks the
+    // raw value against it, so a stolen token can't be replayed.
+    final rawNonce = _nonce();
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: sha256.convert(utf8.encode(rawNonce)).toString(),
+      );
+      final idToken = credential.identityToken;
+      if (idToken == null) {
+        throw const AuthFailure('Apple didn\'t return a sign-in token.');
+      }
+      await _attach(OAuthProvider.apple, idToken, nonce: rawNonce);
+      unawaited(_keepAppleToken(credential.authorizationCode));
+      // Apple shares the name (and e-mail) only the first time; after that
+      // keep what the account already has.
+      final previous = await current();
+      final name = [
+        credential.givenName,
+        credential.familyName,
+      ].whereType<String>().join(' ').trim();
+      return await _save(
+        Account(
+          provider: 'apple',
+          email:
+              credential.email ??
+              Supabase.instance.client.auth.currentUser?.email ??
+              previous?.email,
+          name: name.isNotEmpty ? name : previous?.name,
+        ),
+      );
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        throw const AuthFailure('', cancelled: true);
+      }
+      debugPrint('Apple sign-in failed: ${e.code} ${e.message}');
+      throw const AuthFailure('Apple sign-in didn\'t work. Try again.');
+    } on SignInWithAppleException catch (e) {
+      debugPrint('Apple sign-in unavailable: $e');
+      throw const AuthFailure('Apple sign-in isn\'t available right now.');
+    } on AuthException catch (e) {
+      debugPrint('Supabase Apple sign-in failed: ${e.message}');
+      throw const AuthFailure('Couldn\'t sign you in. Try again.');
+    } on SocketException {
+      throw const AuthFailure('You\'re offline.');
+    }
+  }
+
+  /// Lets the server revoke ClearSkin's Apple access if the account is
+  /// deleted (Apple requires it). Sign-in never waits on this.
+  Future<void> _keepAppleToken(String code) async {
+    try {
+      await Supabase.instance.client.functions.invoke(
+        'apple-token',
+        body: {'authorization_code': code},
+      );
+    } catch (e) {
+      debugPrint('Apple token not kept: $e');
+    }
+  }
+
+  /// Links [idToken]'s identity to the anonymous session, or signs in to
+  /// the account that identity already belongs to.
+  Future<void> _attach(
+    OAuthProvider provider,
+    String idToken, {
+    String? nonce,
+  }) async {
+    final auth = Supabase.instance.client.auth;
+    final anon = auth.currentUser?.isAnonymous ?? false;
+    if (anon) {
+      try {
+        await auth.linkIdentityWithIdToken(
+          provider: provider,
+          idToken: idToken,
+          nonce: nonce,
+        );
+        return;
+      } on AuthException {
+        // This identity already belongs to a ClearSkin user (e.g. a
+        // reinstall): sign in to that account instead.
+      }
+    }
+    await auth.signInWithIdToken(
+      provider: provider,
+      idToken: idToken,
+      nonce: nonce,
+    );
+  }
+
+  static String _nonce() {
+    final random = Random.secure();
+    return base64Url.encode(List.generate(32, (_) => random.nextInt(256)));
   }
 
   /// Sends a 6-digit code to [email].

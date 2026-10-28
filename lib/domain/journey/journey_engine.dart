@@ -1,3 +1,5 @@
+import 'package:clock/clock.dart';
+
 import '../../data/models/profile.dart';
 import '../../data/models/scan.dart';
 
@@ -41,9 +43,8 @@ class JourneyPhase {
   final String expect;
 
   bool contains(int week) => week >= firstWeek && week <= lastWeek;
-  String get weeksLabel => firstWeek == lastWeek
-      ? 'Week $firstWeek'
-      : 'Weeks $firstWeek–$lastWeek';
+  String get weeksLabel =>
+      firstWeek == lastWeek ? 'Week $firstWeek' : 'Weeks $firstWeek–$lastWeek';
 }
 
 class Journey {
@@ -82,10 +83,8 @@ class Journey {
   final bool seeDoctorNow;
 
   bool get complete => day > totalWeeks * 7;
-  JourneyPhase get phase => phases.firstWhere(
-    (p) => p.contains(week),
-    orElse: () => phases.last,
-  );
+  JourneyPhase get phase =>
+      phases.firstWhere((p) => p.contains(week), orElse: () => phases.last);
   int get phaseIndex => phases.indexOf(phase);
 
   /// 0–1 through the 12 weeks.
@@ -104,7 +103,7 @@ abstract final class JourneyEngine {
     required List<SkinScan> usableScans,
     DateTime? now,
   }) {
-    final today = _day(now ?? DateTime.now());
+    final today = _day(now ?? clock.now());
     final start = _day(profile.createdAt);
     final day = today.difference(start).inDays + 1;
     final week = ((day - 1) ~/ 7 + 1).clamp(1, Journey.totalWeeks);
@@ -371,12 +370,9 @@ abstract final class JourneyEngine {
   }
 
   static String _doctorNote(JourneyTrack t) => switch (t) {
-    JourneyTrack.clear =>
-      'Painful, deep or scarring breakouts — or no change by week 8 — need a dermatologist. Prescription options work.',
-    JourneyTrack.fade =>
-      'See a dermatologist for patches that spread, change shape, or appeared in pregnancy.',
-    JourneyTrack.calm =>
-      'Constant flushing, burning or bumps can be rosacea or eczema. A doctor can help.',
+    JourneyTrack.clear => 'Painful, deep or scarring breakouts — or no change by week 8 — need a dermatologist. Prescription options work.',
+    JourneyTrack.fade => 'See a dermatologist for patches that spread, change shape, or appeared in pregnancy.',
+    JourneyTrack.calm => 'Constant flushing, burning or bumps can be rosacea or eczema. A doctor can help.',
     JourneyTrack.shave =>
       'Bumps that keep coming back or scar are worth a dermatologist visit.',
     _ =>

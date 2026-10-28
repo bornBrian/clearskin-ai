@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -37,20 +38,33 @@ class AdsService {
 
   bool get canRequestAds => _canRequest;
 
+  static bool get _supported =>
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS;
+
   /// Google's test units in debug builds; the configured units (or none)
   /// in release builds.
   static String? unitFor(AdPlacement p) {
+    if (!_supported) return null;
+    final ios = defaultTargetPlatform == TargetPlatform.iOS;
     final configured = switch (p) {
-      AdPlacement.banner => Env.admobBannerId,
-      AdPlacement.interstitial => Env.admobInterstitialId,
-      AdPlacement.rewarded => Env.admobRewardedId,
+      AdPlacement.banner => ios ? Env.admobIosBannerId : Env.admobBannerId,
+      AdPlacement.interstitial =>
+        ios ? Env.admobIosInterstitialId : Env.admobInterstitialId,
+      AdPlacement.rewarded =>
+        ios ? Env.admobIosRewardedId : Env.admobRewardedId,
     };
     if (configured.isNotEmpty) return configured;
     if (!kDebugMode) return null;
-    return switch (p) {
-      AdPlacement.banner => 'ca-app-pub-3940256099942544/9214589741',
-      AdPlacement.interstitial => 'ca-app-pub-3940256099942544/1033173712',
-      AdPlacement.rewarded => 'ca-app-pub-3940256099942544/5224354917',
+    return switch ((p, ios)) {
+      (AdPlacement.banner, false) => 'ca-app-pub-3940256099942544/9214589741',
+      (AdPlacement.interstitial, false) =>
+        'ca-app-pub-3940256099942544/1033173712',
+      (AdPlacement.rewarded, false) => 'ca-app-pub-3940256099942544/5224354917',
+      (AdPlacement.banner, true) => 'ca-app-pub-3940256099942544/2435281174',
+      (AdPlacement.interstitial, true) =>
+        'ca-app-pub-3940256099942544/4411468910',
+      (AdPlacement.rewarded, true) => 'ca-app-pub-3940256099942544/1712485313',
     };
   }
 
@@ -59,7 +73,7 @@ class AdsService {
   /// Gathers consent and starts the SDK. Call once for free users, after
   /// onboarding (never before the person has seen the app).
   Future<void> start({required bool minor}) async {
-    if (_started || defaultTargetPlatform != TargetPlatform.android) return;
+    if (_started || !_supported) return;
     _started = true;
     _minor = minor;
     try {
@@ -126,7 +140,7 @@ class AdsService {
   Future<void> maybeShowInterstitial() async {
     final ad = _interstitial;
     if (ad == null || !_canRequest) return;
-    final now = DateTime.now();
+    final now = clock.now();
     if (_lastInterstitial != null &&
         now.difference(_lastInterstitial!) < _minGap) {
       return;

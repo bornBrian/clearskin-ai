@@ -1,29 +1,23 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/config/app_store.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../domain/premium/renewal.dart';
 import '../../services/telemetry.dart';
 
-/// Google Play's page for this app's subscription, where people resubscribe
+/// The store's page for this app's subscription, where people resubscribe
 /// after cancelling or fix a failed payment. Apps can't do either in-app.
-Uri playSubscriptionsUri(SubscriptionInfo? sub) {
-  final managed = sub?.managementUrl;
-  if (managed != null && managed.startsWith('https://')) {
-    return Uri.parse(managed);
-  }
-  // Google product ids look like "premium_monthly:monthly" (sub:base plan).
-  final sku = sub?.productId?.split(':').first;
-  return Uri.https('play.google.com', '/store/account/subscriptions', {
-    'package': 'com.clearskinai.app',
-    'sku': ?sku,
-  });
-}
+Uri storeSubscriptionsUri(SubscriptionInfo? sub) => AppStore.subscriptionsUri(
+  managementUrl: sub?.managementUrl,
+  productId: sub?.productId,
+);
 
 /// Premium is ending, has ended, or a payment failed: say so plainly, with
 /// one clear action and the person's choice of when (or whether) to hear
@@ -58,7 +52,7 @@ class RenewalBannerCard extends ConsumerWidget {
       ),
       RenewalBanner.paymentIssue => (
         'Payment didn\'t go through',
-        'Update your payment method in Google Play to keep Premium.',
+        'Update your payment method ${AppStore.manageIn} to keep Premium.',
         'Fix payment',
       ),
     };
@@ -69,15 +63,15 @@ class RenewalBannerCard extends ConsumerWidget {
         'banner': banner.name,
       });
       // A cancelled auto-renewing plan, or a failed payment, is fixed in
-      // Google Play; prepaid top-ups and lapsed plans go through the paywall.
-      final viaPlay =
+      // the store; prepaid top-ups and lapsed plans go through the paywall.
+      final viaStore =
           banner == RenewalBanner.paymentIssue ||
           (banner == RenewalBanner.endingSoon &&
               !(sub?.isTrial ?? false) &&
               !_looksPrepaid(sub));
-      if (viaPlay) {
+      if (viaStore) {
         await launchUrl(
-          playSubscriptionsUri(sub),
+          storeSubscriptionsUri(sub),
           mode: LaunchMode.externalApplication,
         );
       } else if (context.mounted) {
@@ -181,13 +175,13 @@ Future<void> showRenewalReminderOptions(
       await notifier.setEnabled(false);
       if (context.mounted) showSnack(context, 'Renewal reminders are off.');
     case 'tomorrow':
-      final at = DateTime.now().add(const Duration(days: 1));
+      final at = clock.now().add(const Duration(days: 1));
       await notifier.remindAt(at);
       if (context.mounted) {
         showSnack(context, 'We\'ll remind you tomorrow at ${_time(at)}.');
       }
     case 'pick':
-      final now = DateTime.now();
+      final now = clock.now();
       final date = await showDatePicker(
         context: context,
         initialDate: now.add(const Duration(days: 1)),

@@ -63,12 +63,21 @@ abstract final class Env {
 
   // ── Ads (Google AdMob). Empty ids fall back to Google's test units in
   // debug builds and disable that placement in release builds. The AdMob
-  // *app* id is read by Gradle from the same env file (ADMOB_APP_ID).
+  // *app* id is read by Gradle from the same env file (ADMOB_APP_ID) on
+  // Android, and from ios/Flutter/AppIds.xcconfig on iPhone. AdMob units
+  // belong to one platform, so iPhone has its own.
   static const admobBannerId = String.fromEnvironment('ADMOB_BANNER_ID');
   static const admobInterstitialId = String.fromEnvironment(
     'ADMOB_INTERSTITIAL_ID',
   );
   static const admobRewardedId = String.fromEnvironment('ADMOB_REWARDED_ID');
+  static const admobIosBannerId = String.fromEnvironment('ADMOB_IOS_BANNER_ID');
+  static const admobIosInterstitialId = String.fromEnvironment(
+    'ADMOB_IOS_INTERSTITIAL_ID',
+  );
+  static const admobIosRewardedId = String.fromEnvironment(
+    'ADMOB_IOS_REWARDED_ID',
+  );
 
   // ── Anti-tamper ──────────────────────────────────────────────────────
   /// Google Cloud project number linked to the app in Play Console → App

@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -354,7 +355,7 @@ class _ProductCard extends ConsumerWidget {
             overflow: TextOverflow.ellipsis,
             style: context.text.titleSmall?.copyWith(height: 1.25),
           ),
-          if (ShelfLife.freshness(product, DateTime.now()) case final f?
+          if (ShelfLife.freshness(product, clock.now()) case final f?
               when f != Freshness.fresh) ...[
             const SizedBox(height: 4),
             Text(

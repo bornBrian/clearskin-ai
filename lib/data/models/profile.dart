@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
+
 /// Enums are persisted by `name`; never rename a value without a migration.
 enum Gender {
   woman('Woman'),
@@ -343,7 +345,7 @@ class UserProfile {
           ? const ReminderSettings()
           : ReminderSettings.fromJson(j['reminders'] as Map<String, dynamic>),
       createdAt:
-          DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now(),
+          DateTime.tryParse(j['createdAt'] as String? ?? '') ?? clock.now(),
       reactsTo: setOf(Reaction.values, j['reactsTo']),
     );
   }

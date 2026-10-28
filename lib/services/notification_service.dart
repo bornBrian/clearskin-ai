@@ -6,6 +6,7 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../core/config/app_store.dart';
 import '../data/models/profile.dart';
 import '../domain/premium/renewal.dart';
 import '../domain/routine/routine_engine.dart';
@@ -380,7 +381,7 @@ class NotificationService {
       _trialId,
       at,
       'Your free trial ends tomorrow',
-      'No surprises: if ClearSkin isn\'t for you, cancel anytime in Google Play → Subscriptions.',
+      'No surprises: if ClearSkin isn\'t for you, cancel anytime in ${AppStore.subscriptionsPath}.',
       details: _general,
     );
   }

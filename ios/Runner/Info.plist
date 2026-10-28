@@ -6,10 +6,37 @@
 	<string>ClearSkin uses your camera to take skin scan selfies and to scan product barcodes and ingredient labels.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Choose an existing selfie to analyse your skin.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save your progress cards to your photos when you choose to.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ClearSkin never records sound. The camera asks for this permission, but scans are photos only.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Use Face ID to keep your skin journal private.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Allowing this lets ClearSkin show ads that are more relevant to you. Your face photos and skin data are never used for ads.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>GADApplicationIdentifier</key>
+	<string>$(ADMOB_IOS_APP_ID)</string>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Google sign-in callback, from ios/Flutter/AppIds.xcconfig. -->
+				<string>$(GOOGLE_IOS_URL_SCHEME)</string>
+			</array>
+		</dict>
+	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -23,7 +50,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>clearskin_ai</string>
+	<string>ClearSkin</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -64,15 +91,6 @@
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 </dict>
 </plist>

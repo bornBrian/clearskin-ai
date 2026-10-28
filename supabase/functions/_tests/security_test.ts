@@ -6,6 +6,8 @@
 // Folders starting with "_" are never deployed as functions.
 
 import { assert, assertEquals } from "jsr:@std/assert@1.0.14";
+import { _useRootForTests } from "../_shared/app_attest.ts";
+import { APP_ID, assertion, attest, clientData, fakeRoot, type FakeKey } from "./fake_apple.ts";
 
 const SUPABASE = "http://127.0.0.1:54399";
 Deno.env.set("SUPABASE_URL", SUPABASE);
@@ -16,7 +18,7 @@ Deno.env.set("GOOGLE_SERVICE_ACCOUNT_JSON", JSON.stringify({ client_email: "t@t"
 
 // ── Fake outside world ──────────────────────────────────────────────────
 
-type Route = (url: URL, init: RequestInit) => Response | Promise<Response> | undefined;
+type Route = (url: URL, init: RequestInit) => Response | undefined | Promise<Response | undefined>;
 const routes: Route[] = [];
 const calls: string[] = [];
 const realFetch = globalThis.fetch;
@@ -92,6 +94,103 @@ routes.push((url, init) => {
   return ok([], 201);
 });
 
+// app_attest_keys, as PostgREST would serve it (the other tables only
+// record calls). Unshifted so it runs before the generic REST route.
+const attestKeys = new Map<string, { public_key: string; sign_count: number; user_id: string; created_at: string }>();
+routes.unshift((url, init) => {
+  if (url.origin !== SUPABASE || url.pathname !== "/rest/v1/app_attest_keys") return;
+  const q = url.searchParams;
+  const method = init.method ?? "GET";
+  const eq = (k: string) => q.get(k)?.replace(/^eq\./, "");
+  if (method === "HEAD") {
+    const user = eq("user_id");
+    const n = [...attestKeys.values()].filter((k) => k.user_id === user).length;
+    return new Response(null, { status: 200, headers: { "Content-Range": `*/${n}` } });
+  }
+  if (method === "POST") {
+    const row = JSON.parse(String(init.body));
+    if (!attestKeys.has(row.key_id)) {
+      attestKeys.set(row.key_id, { ...row, sign_count: 0, created_at: new Date().toISOString() });
+    }
+    return ok([], 201);
+  }
+  const row = attestKeys.get(eq("key_id") ?? "");
+  if (method === "PATCH") {
+    const body = JSON.parse(String(init.body));
+    const below = Number(q.get("sign_count")?.replace(/^lt\./, ""));
+    if (!row || !(row.sign_count < below)) return ok([]);
+    row.sign_count = body.sign_count;
+    return ok([{ key_id: eq("key_id") }]);
+  }
+  const accept = new Headers(init.headers).get("Accept") ?? "";
+  if (accept.includes("vnd.pgrst.object")) {
+    return row ? ok(row) : ok({ code: "PGRST116", message: "0 rows" }, 406);
+  }
+  return ok(row ? [row] : []);
+});
+
+// Sign in with Apple: our test key signs the client secret; the fake Apple
+// checks it like the real one would.
+const appleKey = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+const applePkcs8 = new Uint8Array(await crypto.subtle.exportKey("pkcs8", appleKey.privateKey));
+Deno.env.set("APPLE_TEAM_ID", "TEAMID1234");
+Deno.env.set("APPLE_SIGN_IN_KEY_ID", "KEY123");
+Deno.env.set(
+  "APPLE_SIGN_IN_KEY",
+  `-----BEGIN PRIVATE KEY-----\n${btoa(String.fromCharCode(...applePkcs8))}\n-----END PRIVATE KEY-----`,
+);
+const appleRevoked: string[] = [];
+let appleRevokeStatus = 200;
+routes.unshift(async (url, init) => {
+  if (url.host !== "appleid.apple.com") return;
+  const form = new URLSearchParams(String(init.body));
+  const [h, c, sig] = (form.get("client_secret") ?? "").split(".");
+  const unb64 = (t: string) => Uint8Array.from(atob(t.replace(/-/g, "+").replace(/_/g, "/")), (ch) => ch.charCodeAt(0));
+  const claims = JSON.parse(new TextDecoder().decode(unb64(c)));
+  const genuine = sig && await crypto.subtle.verify(
+    { name: "ECDSA", hash: "SHA-256" },
+    appleKey.publicKey,
+    unb64(sig),
+    new TextEncoder().encode(`${h}.${c}`),
+  );
+  if (!genuine || claims.iss !== "TEAMID1234" || claims.aud !== "https://appleid.apple.com" ||
+    claims.sub !== "com.clearskinai.app" || JSON.parse(new TextDecoder().decode(unb64(h))).kid !== "KEY123") {
+    return ok({ error: "invalid_client" }, 400);
+  }
+  if (url.pathname === "/auth/token") {
+    return form.get("code") === "good-code-123" ? ok({ refresh_token: "rt-apple-1" }) : ok({ error: "invalid_grant" }, 400);
+  }
+  if (url.pathname === "/auth/revoke") {
+    appleRevoked.push(form.get("token") ?? "");
+    return new Response(null, { status: appleRevokeStatus });
+  }
+});
+
+// apple_tokens, and deleting auth users.
+const appleTokens = new Map<string, string>();
+const deletedUsers: string[] = [];
+routes.unshift((url, init) => {
+  if (url.origin !== SUPABASE) return;
+  const method = init.method ?? "GET";
+  if (url.pathname.startsWith("/auth/v1/admin/users/") && method === "DELETE") {
+    deletedUsers.push(url.pathname.split("/").pop()!);
+    return ok({});
+  }
+  if (url.pathname !== "/rest/v1/apple_tokens") return;
+  if (method === "POST") {
+    const row = JSON.parse(String(init.body));
+    appleTokens.set(row.user_id, row.refresh_token);
+    return ok([], 201);
+  }
+  const user = url.searchParams.get("user_id")?.replace(/^eq\./, "") ?? "";
+  const token = appleTokens.get(user);
+  const accept = new Headers(init.headers).get("Accept") ?? "";
+  if (accept.includes("vnd.pgrst.object")) {
+    return token ? ok({ refresh_token: token }) : ok({ code: "PGRST116" }, 406);
+  }
+  return ok(token ? [{ refresh_token: token }] : []);
+});
+
 // The integrity check needs a parsable service-account key.
 const rsa = await crypto.subtle.generateKey(
   { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
@@ -125,6 +224,10 @@ const coach = await load("../coach/index.ts");
 const rewarded = await load("../admob-rewarded/index.ts");
 const status = await load("../account-status/index.ts");
 const del = await load("../delete-account/index.ts");
+const appAttest = await load("../app-attest/index.ts");
+const appleToken = await load("../apple-token/index.ts");
+Deno.env.set("APPLE_APP_ID", APP_ID);
+_useRootForTests(fakeRoot.der);
 
 const U1 = "11111111-1111-4111-8111-111111111111";
 const DEVICE = "a".repeat(64);
@@ -406,6 +509,137 @@ Deno.test("SSV: unknown key, junk signature, stale or odd params are refused", a
   assertEquals((await rewarded(await ssv(reward("tx-old", Date.now() - 3 * 3600_000)))).status, 400);
   assertEquals((await rewarded(await ssv({ ...reward("tx-u"), user_id: "' or 1=1 --" }))).status, 400);
   assertEquals((await rewarded(new Request("https://x/functions/v1/admob-rewarded", { method: "POST" }))).status, 405);
+});
+
+// ── App Attest (iPhone) ─────────────────────────────────────────────────
+
+async function registerIphone(uid = U1): Promise<FakeKey> {
+  const ts = Date.now();
+  const { key, attestation } = await attest({ hash: await clientData(uid, "app-attest", ts) });
+  const res = await appAttest(post("app-attest", { key_id: key.keyId, attestation, ts }, signedIn(uid)));
+  assertEquals(res.status, 200, await res.clone().text());
+  return key;
+}
+
+async function iphoneCall(key: FakeKey, counter: number, opts: { uid?: string; signedFor?: string } = {}) {
+  // Past integrity, a free user out of scans gets 402: that's "let through".
+  rpcReply = () => ({ ok: false, reason: "free_limit" });
+  const ts = Date.now();
+  const uid = opts.uid ?? U1;
+  const a = await assertion(key, await clientData(opts.signedFor ?? uid, "analyze-skin", ts), counter);
+  const token = `ios.${key.keyIdUrl}.${a.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}`;
+  return await analyze(post("analyze-skin", scanBody, { ...signedIn(uid), "x-cs-integrity": token, "x-cs-ts": String(ts) }));
+}
+
+Deno.test("iPhone: a registered genuine app gets through enforce (to the free-limit check)", withEnv({ INTEGRITY_MODE: "enforce" }, async () => {
+  const key = await registerIphone();
+  assertEquals((await iphoneCall(key, 1)).status, 402);
+  assertEquals((await iphoneCall(key, 2)).status, 402);
+}));
+
+Deno.test("iPhone: replaying an assertion is refused", withEnv({ INTEGRITY_MODE: "enforce" }, async () => {
+  const key = await registerIphone();
+  assertEquals((await iphoneCall(key, 5)).status, 402);
+  assertEquals((await iphoneCall(key, 5)).status, 403);
+  assertEquals((await iphoneCall(key, 4)).status, 403);
+}));
+
+Deno.test("iPhone: an assertion signed for another user is refused", withEnv({ INTEGRITY_MODE: "enforce" }, async () => {
+  const key = await registerIphone();
+  const res = await iphoneCall(key, 1, { uid: U1, signedFor: "22222222-2222-4222-8222-222222222222" });
+  assertEquals(res.status, 403);
+}));
+
+Deno.test("iPhone: an unregistered key or a malformed token is refused", withEnv({ INTEGRITY_MODE: "enforce" }, async () => {
+  const { key } = await attest({ hash: new Uint8Array(32) });
+  assertEquals((await iphoneCall(key, 1)).status, 403);
+  for (const bad of ["ios.", "ios.x.y", `ios.${"A".repeat(43)}.AAAA.extra`, "ios..."]) {
+    const res = await analyze(post("analyze-skin", scanBody, { ...signedIn(), "x-cs-integrity": bad, "x-cs-ts": String(Date.now()) }));
+    assertEquals(res.status, 403, bad);
+  }
+}));
+
+Deno.test("iPhone: registration refuses forged, stolen and stale attestations", async () => {
+  const ts = Date.now();
+  // Made for another user.
+  const stolen = await attest({ hash: await clientData("22222222-2222-4222-8222-222222222222", "app-attest", ts) });
+  let res = await appAttest(post("app-attest", { key_id: stolen.key.keyId, attestation: stolen.attestation, ts }, signedIn()));
+  assertEquals(res.status, 403);
+  // An hour old.
+  const old = Date.now() - 3600_000;
+  const stale = await attest({ hash: await clientData(U1, "app-attest", old) });
+  res = await appAttest(post("app-attest", { key_id: stale.key.keyId, attestation: stale.attestation, ts: old }, signedIn()));
+  assertEquals(res.status, 400);
+  // No session, wrong method, junk body.
+  assertEquals((await appAttest(post("app-attest", { key_id: stolen.key.keyId, attestation: stolen.attestation, ts }))).status, 401);
+  assertEquals((await appAttest(new Request("https://x/functions/v1/app-attest", { method: "GET" }))).status, 405);
+  assertEquals((await appAttest(post("app-attest", { key_id: "x", attestation: "<script>", ts: "now" }, signedIn()))).status, 400);
+  assertEquals((await appAttest(post("app-attest", "{not json", signedIn()))).status, 400);
+});
+
+Deno.test("iPhone: one account can't register keys without limit", async () => {
+  const uid = "33333333-3333-4333-8333-333333333333";
+  for (let i = 0; i < 5; i++) await registerIphone(uid);
+  const ts = Date.now();
+  const { key, attestation } = await attest({ hash: await clientData(uid, "app-attest", ts) });
+  const res = await appAttest(post("app-attest", { key_id: key.keyId, attestation, ts }, signedIn(uid)));
+  assertEquals(res.status, 429);
+});
+
+Deno.test("iPhone: registration is off (503) until APPLE_APP_ID is set", async () => {
+  Deno.env.delete("APPLE_APP_ID");
+  try {
+    const res = await appAttest(post("app-attest", { key_id: "x", attestation: "y", ts: 1 }, signedIn()));
+    assertEquals(res.status, 503);
+  } finally {
+    Deno.env.set("APPLE_APP_ID", APP_ID);
+  }
+});
+
+// ── Sign in with Apple ──────────────────────────────────────────────────
+
+Deno.test("Apple token: stored for the caller only, junk and refused codes rejected", async () => {
+  const U4 = "44444444-4444-4444-8444-444444444444";
+  assertEquals((await appleToken(post("apple-token", { authorization_code: "good-code-123" }))).status, 401);
+  assertEquals((await appleToken(post("apple-token", { authorization_code: "x'; drop table--" }, signedIn(U4)))).status, 400);
+  assertEquals((await appleToken(post("apple-token", { authorization_code: "wrong-code-999" }, signedIn(U4)))).status, 400);
+  // A user_id in the body is ignored: the token belongs to the session.
+  const res = await appleToken(post("apple-token", { authorization_code: "good-code-123", user_id: U1 }, signedIn(U4)));
+  assertEquals(res.status, 200);
+  assertEquals(appleTokens.get(U4), "rt-apple-1");
+  assert(!appleTokens.has(U1), "token stored under the user id from the body");
+});
+
+Deno.test("Apple token: 503 until the Apple key is configured", async () => {
+  const saved = Deno.env.get("APPLE_SIGN_IN_KEY")!;
+  Deno.env.delete("APPLE_SIGN_IN_KEY");
+  try {
+    const res = await appleToken(post("apple-token", { authorization_code: "good-code-123" }, signedIn()));
+    assertEquals(res.status, 503);
+  } finally {
+    Deno.env.set("APPLE_SIGN_IN_KEY", saved);
+  }
+});
+
+Deno.test("deleting an account revokes Sign in with Apple, even if Apple is down", async () => {
+  const U5 = "55555555-5555-4555-8555-555555555555";
+  appleTokens.set(U5, "rt-to-revoke");
+  appleRevoked.length = 0;
+  let res = await del(post("delete-account", {}, signedIn(U5)));
+  assertEquals(res.status, 200);
+  assertEquals(appleRevoked, ["rt-to-revoke"]);
+  assert(deletedUsers.includes(U5));
+
+  const U6 = "66666666-6666-4666-8666-666666666666";
+  appleTokens.set(U6, "rt-apple-down");
+  appleRevokeStatus = 503;
+  try {
+    res = await del(post("delete-account", {}, signedIn(U6)));
+  } finally {
+    appleRevokeStatus = 200;
+  }
+  assertEquals(res.status, 200, "Apple being down must not block deleting the account");
+  assert(deletedUsers.includes(U6));
 });
 
 addEventListener("unload", () => {

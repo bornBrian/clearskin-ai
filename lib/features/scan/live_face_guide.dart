@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui' show Offset, Rect, Size;
 
 import 'package:camera/camera.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
@@ -92,7 +93,7 @@ class LiveFaceGuide extends ChangeNotifier {
   }
 
   void _onFrame(CameraImage image) {
-    final now = DateTime.now();
+    final now = clock.now();
     if (_busy || _fired || now.difference(_lastFrame) < _interval) return;
     _lastFrame = now;
     _busy = true;
@@ -170,7 +171,7 @@ class LiveFaceGuide extends ChangeNotifier {
       pose: _pose,
       firstSideYaw: firstSideYaw,
     );
-    final now = DateTime.now();
+    final now = clock.now();
     if (hint.ready) {
       _alignedSince ??= now;
       final held = now.difference(_alignedSince!);

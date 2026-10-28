@@ -22,15 +22,17 @@ _Last updated: [DATE]_
 | Check-ins, products, routine logs, chat | Your device; coach requests include a summary | Insights and coaching |
 | City (optional) | Your device; coordinates sent to our weather provider | Skin forecast |
 | Anonymous account ID | Our servers (Supabase) | Usage limits, linking purchases |
-| Device fraud-prevention ID (a one-way SHA-256 hash of the app-specific Android ID) | Our servers, with usage counters | Stopping abuse of free scans. Never linked to advertising |
+| E-mail address, and the name Google or Apple shares (**only if you sign in**; Apple lets you hide your e-mail) | Our servers (Supabase) | Keeping Premium and your plan with you on any phone |
+| Device fraud-prevention ID (a one-way SHA-256 hash of the app-specific Android ID, or on iPhone of a random ID kept in the device Keychain) | Our servers, with usage counters | Stopping abuse of free scans. Never linked to advertising |
 | Usage counters (feature, time, AI token counts and cost) | Our servers, 90 days. If you delete your account they are unlinked from it and kept with only the device fraud-prevention ID until the 90 days end | Fair-use limits, cost control, stopping free-scan resets |
 | Rewarded-video credits (ad network transaction ID) | Our servers | Granting the extra scan you earned |
 | App integrity verdict (from Google Play Integrity) | Checked by our servers, not stored | Blocking modified copies of the app |
+| iPhone app-attestation key (a public key Apple certifies for this install, and a counter) | Our servers. If you delete your account it is unlinked from you | Blocking modified copies of the app |
 | Purchase status | Google Play / Apple, RevenueCat | Subscriptions and renewal reminders |
 | Advertising ID, approximate location from IP, device and ad-interaction data (**free version only, and only after the consent prompt where required**) | Google AdMob and its mediation partners | Showing and measuring ads |
 | Anonymous usage events and crash reports (random install ID, screen/feature used, app version, error details) | PostHog (EU) | Fix crashes, improve the app. Opt out anytime in Settings. Never includes photos, names or skin answers |
 
-We do **not** collect your name (it stays on device), contacts or precise location. Before any photo leaves your device, we remove location and device metadata (EXIF).
+We do **not** collect your name unless you sign in with Google or Apple and they share it, and we never collect contacts or precise location. Before any photo leaves your device, we remove location and device metadata (EXIF).
 
 ## Advertising
 Free users see a banner on the routine screen, an occasional full-screen ad after finishing a routine (capped per day, never in your first days), and optional rewarded videos you choose to watch for an extra scan.
@@ -47,7 +49,7 @@ Some routine steps and reports link to a search for that product type at an onli
 - **Google (Gemini API)** — [Only if you enable the backup AI provider. Paid tier only. Remove this line if not used.]
 - **Supabase** (backend, [REGION]) — anonymous account, usage counters, rewarded-video credits.
 - **RevenueCat** — subscription status.
-- **Google Play / Apple** — payments; **Google Play Integrity** — app authenticity checks.
+- **Google Play / Apple** — payments and sign-in; **Google Play Integrity** and **Apple App Attest** — app authenticity checks.
 - **Google AdMob**, with mediation partners **AppLovin**, **Meta Audience Network** and **Unity Ads** — ads for free users.
 - **[Affiliate programmes, e.g. Amazon Associates]** — shopping links.
 - **Open-Meteo** — weather for your chosen city.

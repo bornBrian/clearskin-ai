@@ -24,7 +24,7 @@ supabase link --project-ref <your-ref>
 supabase db push
 cp supabase/functions/.env.example supabase/functions/.env   # fill in real values
 supabase secrets set --env-file supabase/functions/.env
-supabase functions deploy analyze-skin coach delete-account account-status admob-rewarded
+supabase functions deploy analyze-skin coach delete-account account-status admob-rewarded app-attest apple-token
 ```
 
 Before every backend deploy, run the attack tests (forged integrity tokens, fake rewards, injection, oversized bodies, Premium faking):

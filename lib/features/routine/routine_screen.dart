@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -108,7 +109,7 @@ class RoutineScreen extends ConsumerStatefulWidget {
 }
 
 class _RoutineScreenState extends ConsumerState<RoutineScreen> {
-  late RoutineSlot _slot = DateTime.now().hour >= 15
+  late RoutineSlot _slot = clock.now().hour >= 15
       ? RoutineSlot.pm
       : RoutineSlot.am;
   String? _appliedSlot;
@@ -130,7 +131,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
     if (routine == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    final now = DateTime.now();
+    final now = clock.now();
     final today = routine.stepsFor(_slot, now);
     final done = ref.watch(todayCompletedProvider(_slot));
     final required = today.where((s) => !s.optional).toList();
@@ -654,7 +655,7 @@ class _WeekStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-    final today = DateTime.now().weekday;
+    final today = clock.now().weekday;
     final tonight = steps.where((s) => s.days.contains(today)).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

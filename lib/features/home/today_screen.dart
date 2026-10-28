@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,7 +27,7 @@ class TodayScreen extends ConsumerWidget {
     final profile = ref.watch(profileProvider).value;
     final name = profile?.firstName ?? '';
     final hasScan = ref.watch(latestScanProvider) != null;
-    final now = DateTime.now();
+    final now = clock.now();
 
     return Scaffold(
       body: AuraBackground(
@@ -392,7 +393,7 @@ class _TodayRoutine extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final routine = ref.watch(routineProvider);
     if (routine == null) return const SizedBox.shrink();
-    final now = DateTime.now();
+    final now = clock.now();
     final slot = now.hour >= 15 ? RoutineSlot.pm : RoutineSlot.am;
     final steps = routine
         .stepsFor(slot, now)

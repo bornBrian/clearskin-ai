@@ -23,3 +23,9 @@ verify_jwt = false
 # Google's ECDSA signature on every callback.
 [functions.admob-rewarded]
 verify_jwt = false
+
+[functions.app-attest]
+verify_jwt = false
+
+[functions.apple-token]
+verify_jwt = false

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -51,13 +52,13 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
   /// When the live camera last (re)started. The shutter waits for the live
   /// checks, but never forever: on a phone where live detection struggles,
   /// it opens after [_shutterFallback] and the photo is checked after.
-  DateTime _cameraSince = DateTime.now();
+  DateTime _cameraSince = clock.now();
   static const _shutterFallback = Duration(seconds: 8);
 
   bool get _shutterLocked {
     final g = _guide;
     if (g == null || !g.active || g.hint.ready) return false;
-    return DateTime.now().difference(_cameraSince) < _shutterFallback;
+    return clock.now().difference(_cameraSince) < _shutterFallback;
   }
 
   @override
@@ -112,7 +113,7 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
     } else {
       // Only usable scans count, matching the server (a blurry photo
       // shouldn't cost a scan).
-      final since = DateTime.now().subtract(
+      final since = clock.now().subtract(
         const Duration(days: FreeLimits.scanWindowDays),
       );
       final recent = (await ref.read(scansProvider.future))
@@ -185,7 +186,7 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
         _camera = ctrl;
         _guide = guide;
         _cameraError = null;
-        _cameraSince = DateTime.now();
+        _cameraSince = clock.now();
       });
       await guide.start();
     } on CameraException catch (e) {
@@ -225,7 +226,7 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
   void _backToCamera() {
     setState(() {
       _phase = _Phase.camera;
-      _cameraSince = DateTime.now();
+      _cameraSince = clock.now();
     });
     unawaited(_guide?.start());
   }
@@ -414,7 +415,7 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
           .add(
             SkinScan(
               id: id,
-              createdAt: DateTime.now(),
+              createdAt: clock.now(),
               photoPath: path,
               analysis: analysis,
               face: _geometry,

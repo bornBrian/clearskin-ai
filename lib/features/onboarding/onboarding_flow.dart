@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -197,7 +198,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       amReminder: _am,
       pmReminder: _pm,
       remindersEnabled: _reminders,
-      createdAt: DateTime.now(),
+      createdAt: clock.now(),
     );
     // Let the "building your plan" moment breathe; it reads as care, not lag.
     await Future<void>.delayed(const Duration(milliseconds: 2600));
@@ -357,7 +358,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
             complexity: RoutineComplexity.balanced,
             budget: Budget.mid,
             shaves: _gender == Gender.man,
-            createdAt: DateTime.now(),
+            createdAt: clock.now(),
           ),
           null,
         ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
@@ -84,7 +85,7 @@ class Telemetry {
     if (!enabled || _id == null) return;
     _queue.add({
       'event': event.name,
-      'timestamp': DateTime.now().toUtc().toIso8601String(),
+      'timestamp': clock.now().toUtc().toIso8601String(),
       'properties': {
         'distinct_id': _id,
         r'$process_person_profile': false,

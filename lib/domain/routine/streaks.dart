@@ -1,3 +1,5 @@
+import 'package:clock/clock.dart';
+
 import '../../core/utils/dates.dart';
 
 /// Where someone's streak stands today.
@@ -43,11 +45,11 @@ abstract final class Streaks {
 
   static StreakState compute(Set<String> completedDays, {DateTime? now}) {
     if (completedDays.isEmpty) return StreakState.empty;
-    final today = Dates.startOfDay(now ?? DateTime.now());
+    final today = Dates.startOfDay(now ?? clock.now());
     final todayKey = Dates.dayKey(today);
-    final first = completedDays.map(Dates.parseDay).reduce(
-      (a, b) => a.isBefore(b) ? a : b,
-    );
+    final first = completedDays
+        .map(Dates.parseDay)
+        .reduce((a, b) => a.isBefore(b) ? a : b);
 
     var streak = 0, best = 0, savers = 0;
     var savedYesterday = false;
@@ -90,6 +92,5 @@ abstract final class Streaks {
   static int current(Set<String> completedDays, {DateTime? now}) =>
       compute(completedDays, now: now).current;
 
-  static int longest(Set<String> completedDays) =>
-      compute(completedDays).best;
+  static int longest(Set<String> completedDays) => compute(completedDays).best;
 }

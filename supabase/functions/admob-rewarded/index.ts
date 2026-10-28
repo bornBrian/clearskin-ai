@@ -11,6 +11,7 @@
 // user id.
 
 import { adminClient, intEnv } from "../_shared/common.ts";
+import { base64Decode, ecdsaDerToRaw } from "../_shared/encoding.ts";
 
 const KEYS_URL = "https://www.gstatic.com/admob/reward/verifier-keys.json";
 const MAX_AGE_MS = 60 * 60 * 1000;
@@ -38,31 +39,6 @@ async function verifierKey(id: string): Promise<CryptoKey | undefined> {
   return keyCache.keys.get(id);
 }
 
-function base64UrlDecode(s: string): Uint8Array {
-  const b64 = s.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(s.length / 4) * 4, "=");
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-}
-
-/** AdMob signs with DER-encoded ECDSA; WebCrypto wants raw r‖s. */
-function derToRaw(der: Uint8Array): Uint8Array<ArrayBuffer> {
-  let i = 2; // SEQUENCE tag + length
-  if (der[1] & 0x80) i += der[1] & 0x7f;
-  const int = () => {
-    if (der[i++] !== 0x02) throw new Error("bad DER");
-    const len = der[i++];
-    let v = der.subarray(i, i + len);
-    i += len;
-    while (v.length > 32 && v[0] === 0) v = v.subarray(1);
-    const out = new Uint8Array(32);
-    out.set(v, 32 - v.length);
-    return out;
-  };
-  const raw = new Uint8Array(64);
-  raw.set(int(), 0);
-  raw.set(int(), 32);
-  return raw;
-}
-
 const ok = () => new Response("ok", { status: 200 });
 
 Deno.serve(async (req) => {
@@ -82,7 +58,8 @@ Deno.serve(async (req) => {
 
     let raw: Uint8Array<ArrayBuffer>;
     try {
-      raw = derToRaw(base64UrlDecode(signature));
+      // AdMob signs with DER-encoded ECDSA; WebCrypto wants raw r‖s.
+      raw = ecdsaDerToRaw(base64Decode(signature), 32);
     } catch {
       return new Response("bad signature", { status: 400 });
     }

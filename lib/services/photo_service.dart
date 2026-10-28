@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart' show Offset, Rect;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
@@ -93,7 +94,7 @@ class PhotoService {
     final tmp = await getTemporaryDirectory();
     final tempPath = p.join(
       tmp.path,
-      'capture_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      'capture_${clock.now().millisecondsSinceEpoch}.jpg',
     );
     await File(tempPath).writeAsBytes(out.jpeg, flush: true);
     final photo = ProcessedPhoto(

@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' show ClientException;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/config/app_store.dart';
 import '../core/config/env.dart';
 import '../data/models/account_status.dart';
 import '../data/models/chat.dart';
@@ -194,12 +196,13 @@ class BackendApi {
         'Can\'t reach ClearSkin right now. Check your connection.',
       );
     }
-    final ts = DateTime.now().millisecondsSinceEpoch;
+    final ts = clock.now().millisecondsSinceEpoch;
     final device = await _security.deviceHash();
     final integrity = await _security.integrityToken(
       userId: uid,
       function: fn,
       timestampMs: ts,
+      registerAppAttest: _registerAppAttest,
     );
     try {
       final res = await _client.functions
@@ -237,6 +240,38 @@ class BackendApi {
     }
   }
 
+  /// Sends a new App Attest key's attestation to the server (iPhone, once
+  /// per install).
+  Future<AttestRegistration> _registerAppAttest(
+    String keyId,
+    String attestation,
+    int timestampMs,
+  ) async {
+    try {
+      await _client.functions
+          .invoke(
+            'app-attest',
+            body: {
+              'key_id': keyId,
+              'attestation': attestation,
+              'ts': timestampMs,
+            },
+          )
+          .timeout(const Duration(seconds: 20));
+      return AttestRegistration.accepted;
+    } on FunctionException catch (e) {
+      debugPrint('App Attest registration: ${e.status} ${e.details}');
+      // 400/403: the server looked at the attestation and refused it.
+      // 503: not set up yet; anything else: try again next time.
+      return e.status == 400 || e.status == 403
+          ? AttestRegistration.rejected
+          : AttestRegistration.unavailable;
+    } catch (e) {
+      debugPrint('App Attest registration failed: $e');
+      return AttestRegistration.unavailable;
+    }
+  }
+
   ApiException _mapFunctionError(FunctionException e) {
     final details = e.details;
     String? message;
@@ -260,7 +295,7 @@ class BackendApi {
       ),
       (403, _) || (_, 'integrity') => ApiException(
         ApiErrorKind.untrusted,
-        message ?? 'Please install ClearSkin from Google Play.',
+        message ?? 'Please install ClearSkin from ${AppStore.name}.',
       ),
       _ => ApiException(
         ApiErrorKind.server,

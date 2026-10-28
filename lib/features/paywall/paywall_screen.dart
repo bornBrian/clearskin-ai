@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/config/app_store.dart';
 import '../../core/config/env.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
@@ -325,7 +326,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     final trial = p.trialDays != null
         ? '${p.trialDays} days free, then ${p.priceString}$period. '
         : '${p.priceString}$period. ';
-    return '${trial}Renews automatically. Cancel anytime in Google Play.';
+    return '${trial}Renews automatically. Cancel anytime ${AppStore.manageIn}.';
   }
 }
 
@@ -586,7 +587,7 @@ class _Unavailable extends ConsumerWidget {
       kDebugMode
           ? 'RevenueCat has no packages in its current offering. Create the subscriptions in Play Console, import them in RevenueCat and add them to the "default" offering.'
           : 'Plans aren\'t available in your region yet. Please check back soon.',
-    PlansIssue.storeUnavailable => 'Google Play billing isn\'t available. Make sure the Play Store is installed, up to date and signed in.',
+    PlansIssue.storeUnavailable => AppStore.billingUnavailable,
     PlansIssue.offline => 'You\'re offline. Connect to see plans.',
   };
 

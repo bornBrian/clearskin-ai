@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:intl/intl.dart';
 
 abstract final class Dates {
@@ -6,14 +7,14 @@ abstract final class Dates {
   /// Local calendar-day key used for check-ins and routine logs.
   static String dayKey(DateTime d) => _dayFmt.format(d);
 
-  static String today() => dayKey(DateTime.now());
+  static String today() => dayKey(clock.now());
 
   static DateTime parseDay(String key) => _dayFmt.parse(key);
 
   static DateTime startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
 
   static String relative(DateTime d, {DateTime? now}) {
-    final n = startOfDay(now ?? DateTime.now());
+    final n = startOfDay(now ?? clock.now());
     final diff = n.difference(startOfDay(d)).inDays;
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Yesterday';
@@ -26,7 +27,7 @@ abstract final class Dates {
   static String short(DateTime d) => DateFormat.MMMd().format(d);
 
   static String greeting([DateTime? now]) {
-    final h = (now ?? DateTime.now()).hour;
+    final h = (now ?? clock.now()).hour;
     if (h < 5) return 'Good night';
     if (h < 12) return 'Good morning';
     if (h < 18) return 'Good afternoon';

@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
     // The genuine app always sends it. Without it, free scans could only be
     // counted per account, and accounts are free to make.
     if (!device && !ent.premium && integrityEnforced()) {
-      throw new HttpError(400, "bad_request", "Please update ClearSkin from Google Play.");
+      throw new HttpError(400, "bad_request", "Please update ClearSkin to the latest version.");
     }
     const freeLimit = intEnv("FREE_SCANS_PER_WINDOW", 2);
     const windowDays = intEnv("FREE_SCAN_WINDOW_DAYS", 30);

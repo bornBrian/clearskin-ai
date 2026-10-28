@@ -37,6 +37,7 @@ class AuthScreen extends ConsumerStatefulWidget {
 
 class _AuthScreenState extends ConsumerState<AuthScreen> {
   bool _busy = false;
+  String? _busyProvider;
 
   Future<void> _done(Account a) async {
     // Skin photos and results are personal. If this phone holds someone
@@ -67,11 +68,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     if (mounted) context.pop(true);
   }
 
-  Future<void> _google() async {
+  Future<void> _google() =>
+      _withProvider('google', ref.read(authServiceProvider).signInWithGoogle);
+
+  Future<void> _apple() =>
+      _withProvider('apple', ref.read(authServiceProvider).signInWithApple);
+
+  Future<void> _withProvider(
+    String provider,
+    Future<Account> Function() signIn,
+  ) async {
     HapticFeedback.lightImpact();
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _busyProvider = provider;
+    });
     try {
-      await _done(await ref.read(authServiceProvider).signInWithGoogle());
+      await _done(await signIn());
     } on AuthFailure catch (e) {
       if (!e.cancelled && mounted) showSnack(context, e.message);
     } finally {
@@ -197,14 +210,30 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       ),
                     ),
                     const SizedBox(height: Space.lg),
-                    _AuthButton(
-                      label: 'Continue with Google',
-                      leading: const GoogleG(size: 20),
-                      light: true,
-                      busy: _busy,
-                      onTap: _busy ? null : _google,
-                    ),
-                    const SizedBox(height: Space.sm),
+                    if (AuthService.appleAvailable) ...[
+                      _AuthButton(
+                        label: 'Continue with Apple',
+                        leading: const Icon(
+                          Icons.apple,
+                          size: 22,
+                          color: BrandColors.charcoal,
+                        ),
+                        light: true,
+                        busy: _busy && _busyProvider == 'apple',
+                        onTap: _busy ? null : _apple,
+                      ),
+                      const SizedBox(height: Space.sm),
+                    ],
+                    if (AuthService.googleAvailable) ...[
+                      _AuthButton(
+                        label: 'Continue with Google',
+                        leading: const GoogleG(size: 20),
+                        light: !AuthService.appleAvailable,
+                        busy: _busy && _busyProvider == 'google',
+                        onTap: _busy ? null : _google,
+                      ),
+                      const SizedBox(height: Space.sm),
+                    ],
                     _AuthButton(
                       label: 'Continue with email',
                       leading: const Icon(

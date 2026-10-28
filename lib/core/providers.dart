@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -242,7 +243,7 @@ final renewalPlanProvider = Provider<RenewalPlan>((ref) {
   return RenewalPlanner.plan(
     ref.watch(subscriptionProvider),
     prefs,
-    DateTime.now(),
+    clock.now(),
   );
 });
 
@@ -460,7 +461,7 @@ final slotDoneTodayProvider = Provider.family<bool, RoutineSlot>((ref, slot) {
   final routine = ref.watch(routineProvider);
   if (routine == null) return false;
   final required = routine
-      .stepsFor(slot, DateTime.now())
+      .stepsFor(slot, clock.now())
       .where((s) => !s.optional)
       .map((s) => s.id)
       .toSet();
@@ -586,7 +587,7 @@ class ChatNotifier extends AsyncNotifier<ChatState> {
       id: newId(),
       role: ChatRole.user,
       text: trimmed,
-      createdAt: DateTime.now(),
+      createdAt: clock.now(),
     );
     await ref.read(chatRepoProvider).insert(userMsg);
     final history = [...current.messages, userMsg];
@@ -621,7 +622,7 @@ class ChatNotifier extends AsyncNotifier<ChatState> {
         id: newId(),
         role: ChatRole.assistant,
         text: reply,
-        createdAt: DateTime.now(),
+        createdAt: clock.now(),
       );
       await ref.read(chatRepoProvider).insert(botMsg);
       state = AsyncData(ChatState(messages: [...history, botMsg]));
@@ -681,7 +682,7 @@ final journeyProvider = Provider<Journey?>((ref) {
 final previousOpenProvider = FutureProvider<DateTime?>((ref) async {
   final kv = ref.read(kvProvider);
   final raw = await kv.get(KvKeys.lastOpen);
-  await kv.set(KvKeys.lastOpen, DateTime.now().toIso8601String());
+  await kv.set(KvKeys.lastOpen, clock.now().toIso8601String());
   return raw == null ? null : DateTime.tryParse(raw);
 });
 
@@ -690,7 +691,7 @@ final nudgesProvider = Provider<List<Nudge>>((ref) {
   if (profile == null) return const [];
   return NudgeEngine.pick(
     NudgeContext(
-      now: DateTime.now(),
+      now: clock.now(),
       profile: profile,
       routine: ref.watch(routineProvider),
       amDone: ref.watch(todayCompletedProvider(RoutineSlot.am)),
@@ -730,7 +731,7 @@ final smartAlertsProvider = Provider<void>((ref) {
 final expiryRemindersProvider = Provider<void>((ref) {
   final products = ref.watch(productsProvider).value;
   if (products == null) return;
-  final now = DateTime.now();
+  final now = clock.now();
   unawaited(
     ref.read(notificationServiceProvider).scheduleExpiryReminders([
       for (final p in products)

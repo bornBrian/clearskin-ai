@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -28,7 +29,7 @@ class StreakLine extends ConsumerWidget {
     final done = ref.watch(completedDaysProvider);
     final c = context.colors;
     final yesterday = Dates.dayKey(
-      DateTime.now().subtract(const Duration(days: 1)),
+      clock.now().subtract(const Duration(days: 1)),
     );
     final detail = s.current == 0
         ? 'Finish a routine to start one'
@@ -105,7 +106,7 @@ class _DayTicks extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final today = Dates.startOfDay(DateTime.now());
+    final today = Dates.startOfDay(clock.now());
     final gap = size.width / days;
     for (var i = 0; i < days; i++) {
       final d = DateTime(today.year, today.month, today.day - (days - 1 - i));

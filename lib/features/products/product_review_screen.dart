@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -92,7 +93,7 @@ class _ProductReviewScreenState extends ConsumerState<ProductReviewScreen> {
             category: _category,
             usage: _usage,
             ingredientsRaw: _ingredients.text.trim(),
-            addedAt: DateTime.now(),
+            addedAt: clock.now(),
             barcode: widget.draft.barcode,
             imageUrl: widget.draft.imageUrl,
           ),

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -81,12 +82,12 @@ class ReviewService {
     final last = await _kv.get(KvKeys.reviewPrompted);
     if (last != null) {
       final at = DateTime.tryParse(last);
-      if (at != null && DateTime.now().difference(at).inDays < 90) return;
+      if (at != null && clock.now().difference(at).inDays < 90) return;
     }
     try {
       if (await _review.isAvailable()) {
         await _review.requestReview();
-        await _kv.set(KvKeys.reviewPrompted, DateTime.now().toIso8601String());
+        await _kv.set(KvKeys.reviewPrompted, clock.now().toIso8601String());
       }
     } catch (_) {}
   }
@@ -111,7 +112,7 @@ class ExportService {
 
   Future<void> exportAll() async {
     final data = {
-      'exported_at': DateTime.now().toIso8601String(),
+      'exported_at': clock.now().toIso8601String(),
       'profile': (await profile.load())?.toJson(),
       'scans': [
         for (final s in await scans.all())
