@@ -37,6 +37,8 @@ import 'package:clearskin_ai/features/paywall/paywall_screen.dart';
 import 'package:clearskin_ai/features/products/shelf_screen.dart';
 import 'package:clearskin_ai/features/progress/progress_screen.dart';
 import 'package:clearskin_ai/features/routine/routine_screen.dart';
+import 'package:clearskin_ai/domain/routine/streaks.dart';
+import 'package:clearskin_ai/features/routine/streak_flame.dart';
 import 'package:clearskin_ai/features/routine/streak_widgets.dart';
 import 'package:clearskin_ai/features/scan/face_map.dart';
 import 'package:clearskin_ai/features/scan/scan_result_screen.dart';
@@ -1035,6 +1037,51 @@ void main() {
         ],
       ),
       '27-streak-card',
+    );
+  });
+
+  testWidgets('28 streak extended', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        extra: [completedDaysProvider.overrideWithValue(streakDays)],
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => Scaffold(
+              backgroundColor: const Color(0xFF4A4C49),
+              body: StreakExtendedCard(
+                state: Streaks.compute(streakDays, now: _now),
+              ),
+            ),
+          ),
+        ],
+      ),
+      '28-streak-extended',
+    );
+  });
+
+  testWidgets('29 streak week, not done today', (t) async {
+    final notToday = {...streakDays}..remove(_key(_now));
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        extra: [completedDaysProvider.overrideWithValue(notToday)],
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const Scaffold(
+              body: Align(
+                alignment: Alignment.bottomCenter,
+                child: Material(child: StreakWeekSheet()),
+              ),
+            ),
+          ),
+        ],
+      ),
+      '29-streak-week',
     );
   });
 

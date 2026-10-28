@@ -21,6 +21,7 @@ import '../../domain/shop/shop_links.dart';
 import '../../services/telemetry.dart';
 import '../ads/ad_banner.dart';
 import '../shop/shop_link.dart';
+import 'streak_flame.dart';
 import 'streak_widgets.dart';
 
 /// Ticks a step for today and celebrates (quietly) when a slot completes.
@@ -33,6 +34,7 @@ Future<void> toggleRoutineStep(
   List<RoutineStep> required,
 ) async {
   HapticFeedback.lightImpact();
+  final streakBefore = ref.read(streakStateProvider);
   final before = ref.read(todayCompletedProvider(slot));
   await ref
       .read(routineLogsProvider.notifier)
@@ -60,7 +62,13 @@ Future<void> toggleRoutineStep(
     return;
   }
 
-  if (context.mounted) {
+  if (!streakBefore.doneToday && streak.doneToday && !celebrated) {
+    // Today's first routine: the streak goes up. Its own small moment,
+    // once a day, like other streak apps.
+    unawaited(kv.set(KvKeys.streakCelebrated, today));
+    if (!context.mounted) return;
+    await showStreakExtended(context, streak);
+  } else if (context.mounted) {
     showSnack(
       context,
       '${slot == RoutineSlot.am ? 'Morning' : 'Evening'} done'

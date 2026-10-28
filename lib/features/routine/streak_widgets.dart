@@ -17,6 +17,7 @@ import '../../core/utils/dates.dart';
 import '../../core/widgets/widgets.dart';
 import '../../domain/routine/streaks.dart';
 import '../../services/telemetry.dart';
+import 'streak_flame.dart';
 
 /// Today's streak: the number, the best, any savers, and the last two
 /// weeks as tick marks (done, saved by a saver, or missed).
@@ -31,8 +32,11 @@ class StreakLine extends ConsumerWidget {
     final yesterday = Dates.dayKey(
       clock.now().subtract(const Duration(days: 1)),
     );
+    final atRisk = s.current > 0 && !s.doneToday;
     final detail = s.current == 0
-        ? 'Finish a routine to start one'
+        ? 'Finish a routine to light it'
+        : atRisk
+        ? 'Finish a routine today to keep it'
         : s.savedDays.contains(yesterday)
         ? 'A saver kept it going yesterday'
         : [
@@ -46,6 +50,8 @@ class StreakLine extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          StreakFlame(lit: s.doneToday && s.current > 0, size: 34),
+          const SizedBox(width: Space.xs),
           Text(
             '${s.current}',
             style: context.text.displaySmall?.copyWith(
@@ -62,7 +68,9 @@ class StreakLine extends ConsumerWidget {
                 if (detail.isNotEmpty)
                   Text(
                     detail,
-                    style: context.text.bodySmall,
+                    style: context.text.bodySmall?.copyWith(
+                      color: atRisk ? c.warn : null,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -210,7 +218,15 @@ class StreakCard extends StatelessWidget {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text('$days', style: t(22, w: FontWeight.w200)),
+                                SizedBox(
+                                  width: 9 * u,
+                                  height: 11 * u,
+                                  child: const CustomPaint(
+                                    painter: FlamePainter(lit: true),
+                                  ),
+                                ),
+                                SizedBox(height: 1.5 * u),
+                                Text('$days', style: t(20, w: FontWeight.w200)),
                                 SizedBox(height: 1 * u),
                                 Text(
                                   'DAY STREAK',

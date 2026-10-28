@@ -14,6 +14,7 @@ import '../../data/models/scan.dart';
 import '../../domain/ingredients/product_analyzer.dart';
 import '../../domain/nudges/nudge_engine.dart';
 import '../paywall/renewal_banner.dart';
+import '../routine/streak_flame.dart';
 import '../routine/streak_widgets.dart';
 import '../journey/journey_screen.dart';
 import '../routine/routine_screen.dart';
@@ -101,6 +102,7 @@ class _TopBar extends StatelessWidget {
       children: [
         const BrandMark(size: 46),
         const Spacer(),
+        const StreakFlameCount(),
         IconButton(
           tooltip: 'Reminders',
           onPressed: () => context.push('/settings/reminders'),

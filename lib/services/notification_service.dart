@@ -353,7 +353,7 @@ class NotificationService {
         await _once(
           _streakId,
           dayAt(0, mins ~/ 60, mins % 60),
-          'Keep your $streak-day streak',
+          '🔥 Keep your $streak-day streak',
           'Your evening routine takes two minutes.',
           details: _streak,
           payload: '/routine?slot=pm',
