@@ -9,7 +9,7 @@
 // INTEGRITY_MODE decides about like a missing Play Integrity token.
 
 import { z } from "npm:zod@4.6.7";
-import { AttestError, appAttestConfigured, clientDataHash, verifyAttestation } from "../_shared/app_attest.ts";
+import { appAttestConfigured, AttestError, clientDataHash, verifyAttestation } from "../_shared/app_attest.ts";
 import { adminClient, errorResponse, HttpError, intEnv, json, readJson, requireUser } from "../_shared/common.ts";
 
 const MAX_SKEW_MS = 5 * 60 * 1000;

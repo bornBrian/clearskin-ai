@@ -8,15 +8,7 @@
 // Read-only and cheap; the app calls it on launch and before a scan so the
 // numbers it shows are the server's, not its own guess.
 
-import {
-  adminClient,
-  deviceHash,
-  entitlement,
-  errorResponse,
-  intEnv,
-  json,
-  requireUser,
-} from "../_shared/common.ts";
+import { adminClient, deviceHash, entitlement, errorResponse, intEnv, json, requireUser } from "../_shared/common.ts";
 
 let shopConfig: unknown;
 

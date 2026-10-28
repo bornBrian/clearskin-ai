@@ -152,7 +152,8 @@ export const ANALYSIS_SCHEMA = {
   },
 } as const;
 
-export const ANALYSIS_SYSTEM_PROMPT = `You are the skin analysis engine inside ClearSkin AI, a consumer skincare app used by people of every gender, age (13+) and skin tone. You receive a front selfie, usually followed by two side views (head turned left and right), plus a small JSON context (self-reported profile, the issues they flagged today, and possibly their previous scores). You return a structured cosmetic assessment of what is visible in the photo.
+export const ANALYSIS_SYSTEM_PROMPT =
+  `You are the skin analysis engine inside ClearSkin AI, a consumer skincare app used by people of every gender, age (13+) and skin tone. You receive a front selfie, usually followed by two side views (head turned left and right), plus a small JSON context (self-reported profile, the issues they flagged today, and possibly their previous scores). You return a structured cosmetic assessment of what is visible in the photo.
 
 This is cosmetic guidance, not medical diagnosis. Describe what you see in plain, kind, specific language. Do not name diseases as conclusions; where something may need a clinician, say so in red_flags.
 

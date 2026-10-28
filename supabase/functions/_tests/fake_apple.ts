@@ -37,8 +37,7 @@ function derInt(bytes: Uint8Array): Uint8Array {
   return tlv(0x02, v[0] & 0x80 ? concat(new Uint8Array([0]), v) : v);
 }
 
-const name = (cn: string) =>
-  seq(tlv(0x31, seq(oid("2.5.4.3"), tlv(0x0c, new TextEncoder().encode(cn)))));
+const name = (cn: string) => seq(tlv(0x31, seq(oid("2.5.4.3"), tlv(0x0c, new TextEncoder().encode(cn)))));
 
 function utcTime(d: Date): Uint8Array {
   const p = (n: number) => String(n).padStart(2, "0");

@@ -27,10 +27,11 @@ supabase secrets set --env-file supabase/functions/.env
 supabase functions deploy analyze-skin coach delete-account account-status admob-rewarded app-attest apple-token
 ```
 
-Before every backend deploy, run the attack tests (forged integrity tokens, fake rewards, injection, oversized bodies, Premium faking):
+Before every backend deploy, run the attack tests (forged integrity tokens and iPhone attestations, fake rewards, swapped user ids, injection, oversized bodies, Premium faking) and the database tests (client permissions, data integrity, simultaneous requests) against a local Postgres. GitHub CI runs both on every push:
 
 ```bash
-cd supabase/functions && deno test --allow-env --allow-read=. --allow-net=127.0.0.1 _tests/
+cd supabase/functions && deno fmt --check && deno lint && deno test --allow-env --allow-read=. --allow-net=127.0.0.1 _tests/
+PGHOST=127.0.0.1 PGUSER=postgres PGPASSWORD=... bash supabase/tests/run.sh   # throwaway local database only
 ```
 
 Server settings that matter (all in `supabase/functions/.env.example`):

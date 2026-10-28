@@ -7,6 +7,7 @@ import { z } from "npm:zod@4.6.7";
 import type Anthropic from "npm:@anthropic-ai/sdk@1.2.0";
 import { claude, FALLBACK_BETA, finalText, mapClaudeError, model } from "../_shared/claude.ts";
 import {
+  allInOrder,
   deviceHash,
   errorResponse,
   finishUsage,
@@ -35,7 +36,8 @@ const RequestSchema = z.object({
   context: z.record(z.string(), z.unknown()).default({}),
 });
 
-const SYSTEM_PROMPT = `You are the ClearSkin AI skin coach, inside a consumer skincare app for people of every gender, age (13+) and skin tone.
+const SYSTEM_PROMPT =
+  `You are the ClearSkin AI skin coach, inside a consumer skincare app for people of every gender, age (13+) and skin tone.
 
 Each request includes a CONTEXT block with the user's skin profile, their latest scan summary and scores, their current routine and the products on their shelf. Use it: answer about THEIR skin and THEIR products, refer to routine steps by name, and point out when something on their shelf is relevant. Never reveal or quote the raw context.
 
@@ -61,15 +63,19 @@ Deno.serve(async (req) => {
   let reservation: number | undefined;
   try {
     const userId = await requireUser(req);
-    await requireIntegrity(req, userId, "coach");
-    const parsed = RequestSchema.safeParse(await readJson(req, MAX_BODY_BYTES));
+    const [, raw, premium] = await allInOrder(
+      requireIntegrity(req, userId, "coach"),
+      readJson(req, MAX_BODY_BYTES),
+      isPremium(userId),
+    );
+    const parsed = RequestSchema.safeParse(raw);
     if (!parsed.success) throw new HttpError(400, "bad_request", "Invalid request.");
     const { messages, context } = parsed.data;
     if (messages[messages.length - 1].role !== "user") {
       throw new HttpError(400, "bad_request", "Last message must be from the user.");
     }
 
-    if (!(await isPremium(userId))) {
+    if (!premium) {
       throw new HttpError(402, "premium_required", "The skin coach is a Premium feature.");
     }
     await requireSpendHeadroom();

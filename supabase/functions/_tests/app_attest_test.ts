@@ -102,7 +102,13 @@ Deno.test("junk attestations fail cleanly", async () => {
     b64(new Uint8Array(200)),
     b64(cbor({ fmt: "packed" })),
     b64(cbor({ fmt: "apple-appattest", attStmt: { x5c: [] }, authData: new Uint8Array(10) })),
-    b64(cbor({ fmt: "apple-appattest", attStmt: { x5c: [new Uint8Array(5), new Uint8Array(5)] }, authData: new Uint8Array(60) })),
+    b64(
+      cbor({
+        fmt: "apple-appattest",
+        attStmt: { x5c: [new Uint8Array(5), new Uint8Array(5)] },
+        authData: new Uint8Array(60),
+      }),
+    ),
     b64(new Uint8Array([0x9f, 0x01, 0xff])), // indefinite-length array
     b64(new Uint8Array(Array(40).fill(0x81))), // nested 40 deep
     b64(new Uint8Array([0x5a, 0xff, 0xff, 0xff, 0xff])), // 4 GB byte string

@@ -1,5 +1,5 @@
 // Shared helpers for ClearSkin Edge Functions (Deno).
-import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.117.3";
 
 export class HttpError extends Error {
   constructor(
@@ -111,6 +111,17 @@ export async function requireUser(req: Request): Promise<string> {
 export function deviceHash(req: Request): string | null {
   const v = (req.headers.get("x-cs-device") ?? "").toLowerCase();
   return /^[0-9a-f]{64}$/.test(v) ? v : null;
+}
+
+/** Runs independent checks at the same time (they're mostly network
+ * round trips), then fails with the first error in the order given, so
+ * the response doesn't depend on which happened to finish first. */
+export async function allInOrder<T extends readonly unknown[]>(
+  ...checks: { [K in keyof T]: Promise<T[K]> }
+): Promise<T> {
+  const settled = await Promise.allSettled(checks);
+  for (const r of settled) if (r.status === "rejected") throw r.reason;
+  return settled.map((r) => (r as PromiseFulfilledResult<unknown>).value) as unknown as T;
 }
 
 // ── Entitlements (RevenueCat) ─────────────────────────────────────────

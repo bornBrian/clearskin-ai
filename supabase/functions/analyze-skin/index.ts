@@ -12,6 +12,7 @@
 import { z } from "npm:zod@4.6.7";
 import { analyzeImages } from "../_shared/ai.ts";
 import {
+  allInOrder,
   deviceHash,
   entitlement,
   errorResponse,
@@ -26,13 +27,7 @@ import {
   reserveUsage,
 } from "../_shared/common.ts";
 import { integrityEnforced, requireIntegrity } from "../_shared/integrity.ts";
-import {
-  ANALYSIS_SCHEMA,
-  ANALYSIS_SYSTEM_PROMPT,
-  DISCLAIMER,
-  ISSUE_KEYS,
-  METRIC_KEYS,
-} from "./prompt.ts";
+import { ANALYSIS_SCHEMA, ANALYSIS_SYSTEM_PROMPT, DISCLAIMER, ISSUE_KEYS, METRIC_KEYS } from "./prompt.ts";
 
 // A 1024 px JPEG is ~150 KB and base64 adds a third; a scan is up to three
 // of them. Anything far above that didn't come from the app.
@@ -110,9 +105,15 @@ Deno.serve(async (req) => {
   let reservation: number | undefined;
   try {
     const userId = await requireUser(req);
-    await requireIntegrity(req, userId, "analyze-skin");
+    // The photos upload while Google/Apple and RevenueCat are asked.
+    const [, rawBody, , ent] = await allInOrder(
+      requireIntegrity(req, userId, "analyze-skin"),
+      readJson(req, MAX_BODY_BYTES),
+      requireSpendHeadroom(),
+      entitlement(userId),
+    );
 
-    const parsed = RequestSchema.safeParse(await readJson(req, MAX_BODY_BYTES));
+    const parsed = RequestSchema.safeParse(rawBody);
     if (!parsed.success) {
       throw new HttpError(400, "bad_request", "Invalid request.");
     }
@@ -123,8 +124,6 @@ Deno.serve(async (req) => {
     }
 
     // ── Quotas (reserved atomically, before any money is spent) ────────
-    await requireSpendHeadroom();
-    const ent = await entitlement(userId);
     const device = deviceHash(req);
     // The genuine app always sends it. Without it, free scans could only be
     // counted per account, and accounts are free to make.

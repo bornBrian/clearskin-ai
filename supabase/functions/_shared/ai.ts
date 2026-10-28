@@ -15,7 +15,7 @@
 
 import Anthropic from "npm:@anthropic-ai/sdk@1.2.0";
 import { claude, FALLBACK_BETA, fallbackModel, finalText, mapClaudeError, model } from "./claude.ts";
-import { HttpError, type ClaudeUsage } from "./common.ts";
+import { type ClaudeUsage, HttpError } from "./common.ts";
 
 export interface VisionImage {
   mediaType: "image/jpeg" | "image/png" | "image/webp";
