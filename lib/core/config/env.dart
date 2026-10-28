@@ -61,6 +61,29 @@ abstract final class Env {
     defaultValue: '1.0.0',
   );
 
+  // ── Ads (Google AdMob). Empty ids fall back to Google's test units in
+  // debug builds and disable that placement in release builds. The AdMob
+  // *app* id is read by Gradle from the same env file (ADMOB_APP_ID).
+  static const admobBannerId = String.fromEnvironment('ADMOB_BANNER_ID');
+  static const admobInterstitialId = String.fromEnvironment(
+    'ADMOB_INTERSTITIAL_ID',
+  );
+  static const admobRewardedId = String.fromEnvironment('ADMOB_REWARDED_ID');
+
+  // ── Anti-tamper ──────────────────────────────────────────────────────
+  /// Google Cloud project number linked to the app in Play Console → App
+  /// integrity. 0 = Play Integrity off.
+  static const playIntegrityProjectNumber = int.fromEnvironment(
+    'PLAY_INTEGRITY_PROJECT_NUMBER',
+  );
+
+  /// SHA-256 of the *app signing* certificate (Play Console → Test and
+  /// release → App integrity → App signing), comma-separated if several.
+  /// When set, a release build signed with any other key refuses to run.
+  static const expectedSigningSha256 = String.fromEnvironment(
+    'EXPECTED_SIGNING_SHA256',
+  );
+
   static bool get hasBackend =>
       supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;
 
@@ -82,5 +105,6 @@ abstract final class Env {
   /// use the real AI.
   static const _aiDemo = bool.fromEnvironment('AI_DEMO');
   static const previewBuild = bool.fromEnvironment('PREVIEW_BUILD');
-  static bool get aiDemo => demoMode || ((kDebugMode || previewBuild) && _aiDemo);
+  static bool get aiDemo =>
+      demoMode || ((kDebugMode || previewBuild) && _aiDemo);
 }

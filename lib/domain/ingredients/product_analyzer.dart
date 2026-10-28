@@ -5,6 +5,7 @@ import 'ingredient_parser.dart';
 enum FlagSeverity { info, low, medium, high }
 
 enum FlagKind {
+  personal,
   pregnancy,
   fragrance,
   essentialOil,
@@ -81,6 +82,33 @@ class ProductAnalysis {
     fitScore: 0,
     verdict: Verdict.unknown,
   );
+}
+
+/// Whether [ing] belongs to what someone reacts to.
+bool reactsTo(Reaction r, Ingredient ing) {
+  final f = ing.families;
+  return switch (r) {
+    Reaction.fragrance =>
+      f.contains(Family.fragrance) && !f.contains(Family.essentialOil),
+    Reaction.essentialOils => f.contains(Family.essentialOil),
+    Reaction.alcohol => f.contains(Family.dryingAlcohol),
+    Reaction.retinoids =>
+      f.contains(Family.retinoid) || f.contains(Family.prescriptionRetinoid),
+    Reaction.acids =>
+      f.contains(Family.aha) ||
+          f.contains(Family.bha) ||
+          f.contains(Family.pha),
+    Reaction.vitaminC =>
+      f.contains(Family.vitaminC) || f.contains(Family.vitaminCDerivative),
+    Reaction.niacinamide => f.contains(Family.niacinamide),
+    Reaction.benzoylPeroxide => f.contains(Family.benzoylPeroxide),
+    Reaction.sulfates => f.contains(Family.harshSurfactant),
+    Reaction.preservatives => f.contains(Family.allergenPreservative),
+    Reaction.coconut =>
+      ing.id.contains('coconut') ||
+          ing.aliases.any((a) => a.contains('cocos nucifera')),
+    Reaction.lanolin => ing.id.contains('lanolin'),
+  };
 }
 
 /// Scores a product's ingredient list against a specific person's skin.
@@ -167,6 +195,23 @@ abstract final class ProductAnalyzer {
         matched.where(test).map((e) => e.match!.name).toSet().toList();
 
     final flags = <IngredientFlag>[];
+
+    // Things this person has reacted to before outrank everything else.
+    final reactions = p?.reactsTo ?? const <Reaction>{};
+    if (reactions.isNotEmpty) {
+      final hits = names((i) => reactions.any((r) => reactsTo(r, i.match!)));
+      if (hits.isNotEmpty) {
+        flags.add(
+          IngredientFlag(
+            kind: FlagKind.personal,
+            severity: FlagSeverity.high,
+            title: 'On your "I react to" list',
+            message: 'Your skin has reacted to this before. Skip it, or patch test behind the ear for 3 days first.',
+            ingredients: hits,
+          ),
+        );
+      }
+    }
 
     // Pregnancy — always surfaced for pregnant/nursing users.
     final avoid = names(

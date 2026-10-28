@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
@@ -9,6 +10,7 @@ import '../../core/widgets/widgets.dart';
 import '../../data/models/product.dart';
 import '../../domain/ingredients/product_analyzer.dart';
 import '../../domain/insights/insights_engine.dart';
+import '../../domain/products/shelf_life.dart';
 import 'product_analysis_view.dart';
 
 class ProductDetailScreen extends ConsumerWidget {
@@ -128,10 +130,99 @@ class ProductDetailScreen extends ConsumerWidget {
               if (v != null) update(product.copyWith(usage: v));
             },
           ),
+          const SizedBox(height: Space.md),
+          _ShelfLifeRow(
+            product: product,
+            suggested: ShelfLife.suggestedMonths(
+              product.category,
+              analysis.families,
+            ),
+            onChanged: update,
+          ),
           const SizedBox(height: Space.lg),
           ProductAnalysisView(analysis: analysis),
         ],
       ),
+    );
+  }
+}
+
+/// Opened on · use within · use by. Setting the date is one tap; the
+/// months default to what's typical for this kind of product.
+class _ShelfLifeRow extends StatelessWidget {
+  const _ShelfLifeRow({
+    required this.product,
+    required this.suggested,
+    required this.onChanged,
+  });
+
+  final Product product;
+  final int suggested;
+  final Future<void> Function(Product) onChanged;
+
+  Future<void> _pickOpened(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: product.openedAt ?? now,
+      firstDate: now.subtract(const Duration(days: 730)),
+      lastDate: now,
+      helpText: 'Opened on',
+    );
+    if (picked == null) return;
+    await onChanged(
+      product.copyWith(
+        openedAt: picked,
+        paoMonths: product.paoMonths ?? suggested,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final useBy = ShelfLife.useBy(product);
+    final fresh = ShelfLife.freshness(product, DateTime.now());
+    final date = DateFormat('d MMM y');
+    if (product.openedAt == null) {
+      return LineItem(
+        title: 'When did you open it?',
+        subtitle: 'Get a reminder before it stops working',
+        trailing: Icon(Icons.chevron_right_rounded, color: c.inkFaint),
+        divider: false,
+        onTap: () => _pickOpened(context),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LineItem(
+          title: 'Opened ${date.format(product.openedAt!)}',
+          subtitle: useBy == null
+              ? null
+              : switch (fresh) {
+                  Freshness.expired =>
+                    'Past its best since ${date.format(useBy)}. Replace it.',
+                  Freshness.endingSoon => 'Use by ${date.format(useBy)}',
+                  _ => 'Good until ${date.format(useBy)}',
+                },
+          trailing: Icon(Icons.edit_calendar_outlined, color: c.inkFaint),
+          onTap: () => _pickOpened(context),
+        ),
+        DropdownButtonFormField<int>(
+          initialValue: product.paoMonths ?? suggested,
+          decoration: const InputDecoration(
+            labelText: 'Good for after opening (on the pack: 6M, 12M…)',
+          ),
+          items: [
+            for (final m in ShelfLife.choices)
+              DropdownMenuItem(value: m, child: Text('$m months')),
+          ],
+          onChanged: (v) {
+            if (v != null) onChanged(product.copyWith(paoMonths: v));
+          },
+        ),
+      ],
     );
   }
 }

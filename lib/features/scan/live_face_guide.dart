@@ -34,6 +34,23 @@ class LiveFaceGuide extends ChangeNotifier {
 
   LiveHint hint = LiveHint.noFace;
 
+  /// Which photo is being taken. Changing it restarts the hold timer.
+  ScanPose get pose => _pose;
+  ScanPose _pose = ScanPose.front;
+  set pose(ScanPose p) {
+    _pose = p;
+    _alignedSince = null;
+    progress = 0;
+    hint = p.isSide ? LiveHint.turnSide : LiveHint.noFace;
+    notifyListeners();
+  }
+
+  /// Head yaw of the first side photo, so the second turns the other way.
+  double? firstSideYaw;
+
+  /// Yaw of the latest analysed frame.
+  double? lastYaw;
+
   /// 0..1 progress towards auto-capture.
   double progress = 0;
 
@@ -140,13 +157,19 @@ class LiveFaceGuide extends ChangeNotifier {
               box.top < upright.height * 0.005 ||
               box.right > upright.width * 0.99 ||
               box.bottom > upright.height * 0.995),
+      headroom: box == null || box.height <= 0 ? null : box.top / box.height,
       eyesOpen: leftEye == null || rightEye == null
           ? null
           : (leftEye < rightEye ? leftEye : rightEye),
       motion: motion,
     );
 
-    hint = LiveGuidance.evaluate(frame);
+    lastYaw = face?.headEulerAngleY;
+    hint = LiveGuidance.evaluate(
+      frame,
+      pose: _pose,
+      firstSideYaw: firstSideYaw,
+    );
     final now = DateTime.now();
     if (hint.ready) {
       _alignedSince ??= now;

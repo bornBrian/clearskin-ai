@@ -22,16 +22,22 @@ import 'package:clearskin_ai/data/models/scan.dart';
 import 'package:clearskin_ai/domain/forecast/skin_forecast.dart';
 import 'package:clearskin_ai/domain/scan/face_zones.dart';
 import 'package:clearskin_ai/domain/scan/skin_maps.dart';
+import 'package:clearskin_ai/domain/scan/skin_measure.dart';
 import 'package:clearskin_ai/features/auth/auth_screen.dart';
 import 'package:clearskin_ai/features/home/today_screen.dart';
 import 'package:clearskin_ai/features/journey/journey_screen.dart';
 import 'package:clearskin_ai/features/settings/reminders_screen.dart';
 import 'package:clearskin_ai/services/auth_service.dart';
+import 'package:clearskin_ai/domain/premium/renewal.dart';
+import 'package:clearskin_ai/domain/routine/routine_engine.dart';
+import 'package:clearskin_ai/features/onboarding/medical_disclaimer_screen.dart';
 import 'package:clearskin_ai/features/onboarding/onboarding_flow.dart';
+import 'package:clearskin_ai/features/share/share_card.dart';
 import 'package:clearskin_ai/features/paywall/paywall_screen.dart';
 import 'package:clearskin_ai/features/products/shelf_screen.dart';
 import 'package:clearskin_ai/features/progress/progress_screen.dart';
 import 'package:clearskin_ai/features/routine/routine_screen.dart';
+import 'package:clearskin_ai/features/routine/streak_widgets.dart';
 import 'package:clearskin_ai/features/scan/face_map.dart';
 import 'package:clearskin_ai/features/scan/scan_result_screen.dart';
 import 'package:clearskin_ai/features/scan/skin_lens.dart';
@@ -157,6 +163,25 @@ SkinAnalysis _analysis(int base) => SkinAnalysis(
   ],
   redFlags: const [],
   model: 'sample',
+  focus: SkinFocus.cure,
+  routineAdjustments: const [
+    'Move niacinamide to the morning, after toner',
+    'Azelaic acid on non-retinoid nights only',
+  ],
+  ingredientWarnings: const [
+    'Don\'t layer adapalene and a strong acid on the same night',
+  ],
+  recommendedProductTypes: const ['spot_treatment', 'sunscreen', 'moisturizer'],
+  beyondProducts: const [
+    IngredientTip(
+      name: 'Rinse after training',
+      why: 'Sweat under a cap strap matches the jawline breakouts; rinse within 30 minutes.',
+    ),
+    IngredientTip(
+      name: 'Pillowcase twice a week',
+      why: 'The marks sit on the side you sleep on.',
+    ),
+  ],
 );
 
 final _now = DateTime.now();
@@ -185,7 +210,37 @@ final _scans = [
       id: 's$i',
       createdAt: _now.subtract(Duration(days: days)),
       photoPath: i == 6 ? _samplePhoto : '/none.jpg',
-      face: i == 6 ? _sampleFace : null,
+      face: i == 6 || i == 1 ? _sampleFace : null,
+      // Day one and today, as the on-device lenses measured them.
+      measure: switch (i) {
+        6 => const SkinMeasure(
+          skinLightness: 66,
+          coverage: {
+            SkinLens.redness: 0.11,
+            SkinLens.tone: 0.08,
+            SkinLens.shine: 0.09,
+            SkinLens.texture: 0.13,
+          },
+          zones: {
+            SkinLens.redness: {'cheeks': 0.12, 'jaw': 0.16},
+            SkinLens.tone: {'cheeks': 0.09},
+          },
+        ),
+        1 => const SkinMeasure(
+          skinLightness: 63,
+          coverage: {
+            SkinLens.redness: 0.19,
+            SkinLens.tone: 0.12,
+            SkinLens.shine: 0.10,
+            SkinLens.texture: 0.15,
+          },
+          zones: {
+            SkinLens.redness: {'cheeks': 0.27, 'jaw': 0.21},
+            SkinLens.tone: {'cheeks': 0.16},
+          },
+        ),
+        _ => null,
+      },
       analysis: _analysis(score),
       // s6 is what the on-device measurement gives for the sample photo;
       // the earlier ones are a plausible history.
@@ -345,6 +400,7 @@ Widget _app({
   bool withScans = true,
   UserProfile? profile,
   bool dark = false,
+  List<dynamic> extra = const [],
 }) {
   final router = GoRouter(initialLocation: initial, routes: routes);
   return ProviderScope(
@@ -360,6 +416,9 @@ Widget _app({
         (ref) async => DateTime.now().subtract(const Duration(hours: 20)),
       ),
       purchasesServiceProvider.overrideWithValue(_Purchases()),
+      // No ad network in renders.
+      showAdsProvider.overrideWithValue(false),
+      ...extra.cast(),
       notificationServiceProvider.overrideWithValue(NotificationService()),
       telemetryProvider.overrideWithValue(Telemetry.noop()),
       weatherProvider.overrideWith(
@@ -447,7 +506,19 @@ Future<void> _warmSamplePhoto(WidgetTester tester) async {
   });
 }
 
+/// `QA=small` renders every screen on a small phone (320 dp wide) at the
+/// largest text size the app allows, without comparing goldens: any layout
+/// overflow fails the test. The stress pass testers do by hand.
+final _qa = Platform.environment['QA'];
+
 Future<void> _shot(WidgetTester tester, Widget app, String name) async {
+  if (_qa == 'small') {
+    final tall = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    tester.view
+      ..devicePixelRatio = 2
+      ..physicalSize = Size(640, math.max(568, tall) * 2);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+  }
   // Real blurred shadows (the test default draws them hard-edged); must be
   // restored before the test body ends.
   debugDisableShadows = false;
@@ -457,10 +528,14 @@ Future<void> _shot(WidgetTester tester, Widget app, String name) async {
     await tester.pump(const Duration(milliseconds: 100));
     if (i == 2 || i == 20) await _precacheImages(tester);
   }
-  await expectLater(
-    find.byType(MaterialApp),
-    matchesGoldenFile('../../design/renders/$name.png'),
-  );
+  if (_qa == null) {
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('../../design/renders/$name.png'),
+    );
+  } else {
+    tester.platformDispatcher.clearTextScaleFactorTestValue();
+  }
   // Tear down so repeating animations don't leak into the next test.
   await tester.pumpWidget(const SizedBox());
   await tester.pump(const Duration(seconds: 1));
@@ -822,6 +897,141 @@ void main() {
     );
   });
 
+  testWidgets('20 medical disclaimer', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const MedicalDisclaimerScreen(),
+          ),
+        ],
+        profile: null,
+      ),
+      '20-disclaimer',
+    );
+  });
+
+  // The first scan, pointed at the sample photo so before/after has two.
+  final first = SkinScan(
+    id: 's1',
+    createdAt: _scans.last.createdAt,
+    photoPath: _samplePhoto,
+    analysis: _scans.last.analysis,
+  );
+  for (final (style, name) in [
+    (CardStyle.score, '21-share-score'),
+    (CardStyle.photo, '22-share-photo'),
+    (CardStyle.beforeAfter, '23-share-before-after'),
+  ]) {
+    testWidgets(name, (t) async {
+      await _shot(
+        t,
+        _app(
+          initial: '/',
+          routes: [
+            GoRoute(
+              path: '/',
+              builder: (_, _) => Scaffold(
+                backgroundColor: const Color(0xFFE9E6DF),
+                body: Center(
+                  child: SizedBox(
+                    width: 300,
+                    child: ResultCard(
+                      scan: _scans.first,
+                      previous: _scans[1],
+                      first: first,
+                      style: style,
+                      proof: ProgressProof.compare(
+                        _scans.last.measure!,
+                        _scans.first.measure!,
+                        days: 35,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        name,
+      );
+    });
+  }
+
+  testWidgets('24 step guide', (t) async {
+    final step = RoutineEngine.build(profile: _profile).pm.firstWhere(
+      (s) => s.id == 'pm.retinoid',
+    );
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [
+          GoRoute(path: '/', builder: (_, _) => _OpenSheet(step: step)),
+        ],
+      ),
+      '24-step-guide',
+    );
+  });
+
+  testWidgets('25 today, Premium ending', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/today',
+        routes: _shellRoutes(),
+        extra: [
+          renewalPlanProvider.overrideWithValue(
+            const RenewalPlan(banner: RenewalBanner.endingSoon, daysLeft: 5),
+          ),
+        ],
+      ),
+      '25-today-renewal',
+    );
+  });
+
+  // 13 of the last 14 days done, with day 6 covered by a streak saver.
+  final streakDays = {
+    for (var i = 0; i < 14; i++)
+      if (i != 6) _key(_now.subtract(Duration(days: 13 - i))),
+  };
+
+  testWidgets('26 today with a streak', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/today',
+        routes: _shellRoutes(),
+        extra: [completedDaysProvider.overrideWithValue(streakDays)],
+      ),
+      '26-today-streak',
+    );
+  });
+
+  testWidgets('27 streak card', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const Scaffold(
+              backgroundColor: Color(0xFFE9E6DF),
+              body: Center(
+                child: SizedBox(width: 300, child: StreakCard(days: 14)),
+              ),
+            ),
+          ),
+        ],
+      ),
+      '27-streak-card',
+    );
+  });
+
   testWidgets('17 journey intro', (t) async {
     await _shot(
       t,
@@ -956,4 +1166,26 @@ void main() {
       );
     });
   });
+}
+
+/// Opens a routine step's detail sheet over the routine, as a tap would.
+class _OpenSheet extends StatefulWidget {
+  const _OpenSheet({required this.step});
+  final RoutineStep step;
+
+  @override
+  State<_OpenSheet> createState() => _OpenSheetState();
+}
+
+class _OpenSheetState extends State<_OpenSheet> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => showStepSheet(context, widget.step),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => const RoutineScreen();
 }

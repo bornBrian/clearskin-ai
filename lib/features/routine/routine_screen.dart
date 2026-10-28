@@ -11,8 +11,16 @@ import '../../core/theme/tokens.dart';
 import '../../core/utils/dates.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models/check_in.dart';
+import '../../data/repositories/repositories.dart';
+import '../../domain/guidance/application_guide.dart';
+import '../../domain/guidance/habits.dart';
 import '../../domain/routine/routine_engine.dart';
+import '../../domain/routine/streaks.dart';
+import '../../domain/shop/shop_links.dart';
 import '../../services/telemetry.dart';
+import '../ads/ad_banner.dart';
+import '../shop/shop_link.dart';
+import 'streak_widgets.dart';
 
 /// Ticks a step for today and celebrates (quietly) when a slot completes.
 /// Shared by the Routine tab and the Today checklist.
@@ -34,16 +42,40 @@ Future<void> toggleRoutineStep(
   if (wasDone || !nowDone) return;
   ref.read(telemetryProvider).track(Ev.routineCompleted, {'slot': slot.name});
   HapticFeedback.mediumImpact();
-  final streak = ref.read(streakProvider);
+  final streak = ref.read(streakStateProvider);
+
+  // A milestone gets its own moment (once a day), instead of a snackbar
+  // and never alongside an ad.
+  final kv = ref.read(kvProvider);
+  final today = Dates.today();
+  final celebrated = await kv.get(KvKeys.streakCelebrated) == today;
+  if (Streaks.milestones.contains(streak.current) && !celebrated) {
+    unawaited(kv.set(KvKeys.streakCelebrated, today));
+    if (!context.mounted) return;
+    await showStreakCelebration(context, state: streak);
+    if (streak.current == 7 || streak.current == 30) {
+      unawaited(ref.read(reviewServiceProvider).maybePrompt());
+    }
+    return;
+  }
+
   if (context.mounted) {
     showSnack(
       context,
       '${slot == RoutineSlot.am ? 'Morning' : 'Evening'} done'
-      '${streak > 1 ? ' · $streak-day streak' : ''}',
+      '${streak.current > 1 ? ' · ${streak.current}-day streak' : ''}',
     );
   }
-  if (streak == 7 || streak == 30) {
-    unawaited(ref.read(reviewServiceProvider).maybePrompt());
+  if (ref.read(showAdsProvider)) {
+    // The natural break: the routine is done. Capped and skipped in the
+    // first days (see AdsService), and never for Premium.
+    final ads = ref.read(adsServiceProvider);
+    unawaited(
+      Future<void>.delayed(
+        const Duration(milliseconds: 1400),
+        ads.maybeShowInterstitial,
+      ),
+    );
   }
 }
 
@@ -104,6 +136,14 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
     final required = today.where((s) => !s.optional).toList();
     final completed = required.where((s) => done.contains(s.id)).length;
     final weekly = routine.pm.where((s) => s.days.isNotEmpty).toList();
+    final profile = ref.watch(profileProvider).value;
+    final habits = profile == null
+        ? const <Habit>[]
+        : HabitCoach.pick(
+            profile: profile,
+            latest: ref.watch(latestScanProvider)?.analysis,
+          );
+    final adSpace = ref.watch(showAdsProvider) ? AdBanner.reserve : 0.0;
 
     return Scaffold(
       body: AuraBackground(
@@ -115,7 +155,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
               Space.gutter,
               Space.md,
               Space.gutter,
-              Space.navClearance(context),
+              Space.navClearance(context) + adSpace,
             ),
             children: [
               Eyebrow(DateFormat('EEEE, d MMMM').format(now)),
@@ -190,6 +230,22 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
                 const SizedBox(height: Space.md),
                 _WeekStrip(steps: weekly),
               ],
+              if (habits.isNotEmpty) ...[
+                const SizedBox(height: Space.xl),
+                const Eyebrow('Beyond products'),
+                const SizedBox(height: Space.xs),
+                Text(
+                  'What helps your skin besides what you put on it.',
+                  style: context.text.bodyMedium,
+                ),
+                const SizedBox(height: Space.sm),
+                for (var i = 0; i < habits.length; i++)
+                  _HabitRow(
+                    n: i + 1,
+                    habit: habits[i],
+                    last: i == habits.length - 1,
+                  ),
+              ],
               const SizedBox(height: Space.xl),
               Center(
                 child: TextButton(
@@ -227,6 +283,15 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
             const SizedBox(height: Space.md),
             for (var i = 0; i < notes.length; i++)
               _Numbered(n: i + 1, text: notes[i], last: i == notes.length - 1),
+            const SizedBox(height: Space.lg),
+            const Eyebrow('Layering'),
+            const SizedBox(height: Space.xs),
+            for (var i = 0; i < ApplicationGuide.layering.length; i++)
+              _Numbered(
+                n: i + 1,
+                text: ApplicationGuide.layering[i],
+                last: i == ApplicationGuide.layering.length - 1,
+              ),
             const SizedBox(height: Space.lg),
             const Disclaimer(),
           ],
@@ -314,7 +379,9 @@ class StepRow extends StatelessWidget {
           CheckCircle(
             done: done,
             onTap: onToggle,
-            label: done ? 'Mark ${step.title} not done' : 'Mark ${step.title} done',
+            label: done
+                ? 'Mark ${step.title} not done'
+                : 'Mark ${step.title} done',
           ),
         ],
       ),
@@ -352,6 +419,109 @@ class _Numbered extends StatelessWidget {
           Expanded(child: Text(text, style: context.text.bodyMedium)),
         ],
       ),
+    );
+  }
+}
+
+class _HabitRow extends StatelessWidget {
+  const _HabitRow({required this.n, required this.habit, required this.last});
+  final int n;
+  final Habit habit;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: Space.md),
+      decoration: BoxDecoration(
+        border: last ? null : Border(bottom: BorderSide(color: c.line)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 32,
+            child: Text(
+              n.toString().padLeft(2, '0'),
+              style: context.text.titleSmall?.copyWith(
+                color: c.inkFaint,
+                fontWeight: FontWeight.w300,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(habit.title, style: context.text.titleSmall),
+                const SizedBox(height: 2),
+                Text(habit.detail, style: context.text.bodyMedium),
+                const SizedBox(height: 4),
+                Text(
+                  habit.evidence.label,
+                  style: context.text.labelSmall?.copyWith(color: c.inkFaint),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Amount, how to apply, how long it stays on, the wait before the next
+/// layer and how to take it off, as a hairline table.
+class _GuideTable extends StatelessWidget {
+  const _GuideTable({required this.guide});
+  final ApplicationGuide guide;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final wait = guide.waitBeforeNext;
+    final rows = [
+      ('Amount', guide.amount),
+      ('Apply', guide.technique),
+      ('Stays on', guide.contact),
+      if (wait != null)
+        (
+          'Then wait',
+          wait.inMinutes >= 1
+              ? '${wait.inMinutes} minute${wait.inMinutes == 1 ? '' : 's'} before the next step'
+              : '${wait.inSeconds} seconds before the next step',
+        ),
+      if (guide.removal != null) ('Remove', guide.removal!),
+    ];
+    return Column(
+      children: [
+        for (final (i, (label, text)) in rows.indexed)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: Space.sm + 2),
+            decoration: BoxDecoration(
+              border: i == rows.length - 1
+                  ? null
+                  : Border(bottom: BorderSide(color: c.line)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 92,
+                  child: Text(
+                    label.toUpperCase(),
+                    style: context.text.labelSmall?.copyWith(
+                      color: c.inkMuted,
+                      letterSpacing: 1.1,
+                    ),
+                  ),
+                ),
+                Expanded(child: Text(text, style: context.text.bodyMedium)),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
@@ -417,10 +587,19 @@ class _StepSheet extends StatelessWidget {
           const SizedBox(height: Space.lg),
           block('Why', step.why),
           block('How', step.howTo),
-          if (step.caution != null) block('Careful', step.caution!, color: c.warn),
+          const Eyebrow('Step by step'),
+          const SizedBox(height: 6),
+          _GuideTable(guide: ApplicationGuide.forStep(step)),
+          const SizedBox(height: Space.lg),
+          if (step.caution != null)
+            block('Careful', step.caution!, color: c.warn),
           if (step.matchedProduct != null)
             block('From your shelf', step.matchedProduct!.displayName)
-          else
+          else ...[
+            ShopLinkRow(
+              query: ShopQuery.forStep(step.category, step.keyIngredients),
+            ),
+            const SizedBox(height: Space.md),
             ArrowPill(
               label: 'Add a product for this step',
               icon: Icons.add_rounded,
@@ -430,6 +609,7 @@ class _StepSheet extends StatelessWidget {
                 context.go('/shelf');
               },
             ),
+          ],
         ],
       ),
     );
@@ -453,7 +633,9 @@ class _DayRow extends StatelessWidget {
               labels[d - 1],
               style: context.text.titleSmall?.copyWith(
                 color: days.contains(d) ? c.ink : c.inkFaint,
-                fontWeight: days.contains(d) ? FontWeight.w600 : FontWeight.w300,
+                fontWeight: days.contains(d)
+                    ? FontWeight.w600
+                    : FontWeight.w300,
               ),
             ),
           ),

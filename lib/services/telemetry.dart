@@ -26,6 +26,10 @@ enum Ev {
   shareCardShared('share_card_shared'),
   coachMessageSent('coach_message_sent'),
   tipOpened('tip_opened'),
+  rewardedResult('rewarded_result'),
+  outOfScans('out_of_scans'),
+  shopLinkOpened('shop_link_opened'),
+  renewalAction('renewal_action'),
   appError('app_error');
 
   const Ev(this.name);

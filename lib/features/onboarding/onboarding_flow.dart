@@ -606,60 +606,82 @@ class WelcomeStep extends StatelessWidget {
               Space.gutter,
               Space.sm,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Spacer(),
-                Center(
-                  child: const _Rings(size: 260, child: BrandMark(size: 120))
-                      .animate()
-                      .scale(
-                        begin: const Offset(0.9, 0.9),
-                        duration: 900.ms,
-                        curve: Curves.easeOutCubic,
-                      )
-                      .fadeIn(),
-                ),
-                const Spacer(),
-                Text(
-                      'Your skin,\nunderstood.',
-                      style: context.text.displayMedium,
-                    )
-                    .animate(delay: 150.ms)
-                    .fadeIn(duration: Motion.slow)
-                    .slideY(begin: 0.15, curve: Curves.easeOutCubic),
-                const SizedBox(height: Space.sm),
-                Text(
-                  'A personal skin coach for every skin tone and every gender.',
-                  style: context.text.bodyLarge?.copyWith(color: c.inkMuted),
-                ).animate(delay: 250.ms).fadeIn(duration: Motion.slow),
-                const SizedBox(height: Space.lg),
-                ...[
-                      point(
-                        Icons.center_focus_weak_rounded,
-                        'AI skin scan in 10 seconds',
+            // Fills the screen on tall phones; scrolls on short ones or with
+            // large text instead of overflowing.
+            child: LayoutBuilder(
+              builder: (context, box) {
+                final ring = (box.maxHeight * 0.32).clamp(150.0, 260.0);
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: box.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Spacer(),
+                          Center(
+                            child:
+                                _Rings(
+                                      size: ring,
+                                      child: BrandMark(size: ring * 120 / 260),
+                                    )
+                                    .animate()
+                                    .scale(
+                                      begin: const Offset(0.9, 0.9),
+                                      duration: 900.ms,
+                                      curve: Curves.easeOutCubic,
+                                    )
+                                    .fadeIn(),
+                          ),
+                          const Spacer(),
+                          Text(
+                                'Your skin,\nunderstood.',
+                                style: context.text.displayMedium,
+                              )
+                              .animate(delay: 150.ms)
+                              .fadeIn(duration: Motion.slow)
+                              .slideY(begin: 0.15, curve: Curves.easeOutCubic),
+                          const SizedBox(height: Space.sm),
+                          Text(
+                                'A personal skin coach for every skin tone and every gender.',
+                                style: context.text.bodyLarge?.copyWith(
+                                  color: c.inkMuted,
+                                ),
+                              )
+                              .animate(delay: 250.ms)
+                              .fadeIn(duration: Motion.slow),
+                          const SizedBox(height: Space.lg),
+                          ...[
+                                point(
+                                  Icons.center_focus_weak_rounded,
+                                  'AI skin scan in 10 seconds',
+                                ),
+                                point(
+                                  Icons.event_note_outlined,
+                                  'A routine built for your skin',
+                                ),
+                                point(
+                                  Icons.lock_outline_rounded,
+                                  'Photos stay on your phone',
+                                ),
+                              ]
+                              .animate(interval: 80.ms, delay: 350.ms)
+                              .fadeIn()
+                              .slideX(begin: 0.05),
+                          const SizedBox(height: Space.lg),
+                          ArrowPill(label: 'Get started', onTap: onStart),
+                          Center(
+                            child: TextButton(
+                              onPressed: onSignIn,
+                              child: const Text('I have an account'),
+                            ),
+                          ),
+                        ],
                       ),
-                      point(
-                        Icons.event_note_outlined,
-                        'A routine built for your skin',
-                      ),
-                      point(
-                        Icons.lock_outline_rounded,
-                        'Photos stay on your phone',
-                      ),
-                    ]
-                    .animate(interval: 80.ms, delay: 350.ms)
-                    .fadeIn()
-                    .slideX(begin: 0.05),
-                const SizedBox(height: Space.lg),
-                ArrowPill(label: 'Get started', onTap: onStart),
-                Center(
-                  child: TextButton(
-                    onPressed: onSignIn,
-                    child: const Text('I have an account'),
+                    ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ),

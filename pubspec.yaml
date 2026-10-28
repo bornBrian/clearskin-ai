@@ -3,7 +3,7 @@ description: "ClearSkin AI - your personal AI skin coach."
 publish_to: 'none'
 
 # versionName+versionCode. Bump the build number (after +) on every Play upload.
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: ^3.13.4
@@ -19,6 +19,13 @@ dependencies:
   # Backend, auth & monetization
   supabase_flutter: ^2.18.3
   purchases_flutter: ^10.18.1
+
+  # Ads: AdMob with bidding from AppLovin, Meta Audience Network and Unity
+  # (the adapters only need to be present; mediation is set up in AdMob).
+  google_mobile_ads: ^9.2.0
+  gma_mediation_applovin: ^2.6.5
+  gma_mediation_meta: ^1.7.1
+  gma_mediation_unity: ^1.11.1
 
   # Camera, on-device vision & scanning
   camera: ^0.12.1
@@ -52,6 +59,7 @@ dependencies:
   in_app_review: ^2.0.12
 
   # Utilities
+  crypto: ^3.0.6
   intl: ^0.20.3
   uuid: ^4.6.0
   google_sign_in: ^7.2.0

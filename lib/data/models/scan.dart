@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../domain/scan/face_zones.dart';
 import '../../domain/scan/skin_maps.dart';
+import '../../domain/scan/skin_measure.dart';
 
 /// Visible skin attributes scored by the analysis. Every score is 0-100 where
 /// HIGHER IS BETTER (e.g. acne 90 = very few blemishes), so charts and colors
@@ -131,7 +132,20 @@ class SkinAnalysis {
     required this.ingredientsToAvoid,
     required this.redFlags,
     required this.model,
+    this.focus,
+    this.routineAdjustments = const [],
+    this.ingredientWarnings = const [],
+    this.recommendedProductTypes = const [],
+    this.beyondProducts = const [],
+    this.disclaimer = defaultDisclaimer,
   });
+
+  /// Shown on every report. The server sends the canonical wording; this
+  /// copy covers scans stored before it did.
+  static const defaultDisclaimer =
+      'This tracking log is powered by AI and does not constitute medical '
+      'advice. Please consult a registered dermatologist for clinical '
+      'concerns.';
 
   /// False when the photo can't be assessed reliably (blur, filters, heavy
   /// makeup, bad light). Such scans are kept out of trend charts.
@@ -148,6 +162,19 @@ class SkinAnalysis {
   final List<IngredientTip> ingredientsToAvoid;
   final List<RedFlag> redFlags;
   final String model;
+
+  /// What this skin needs most right now: clear a concern, build glow, or
+  /// keep what's working. Null for older scans.
+  final SkinFocus? focus;
+  final List<String> routineAdjustments;
+  final List<String> ingredientWarnings;
+
+  /// Product types worth adding, most useful first ("moisturizer").
+  final List<String> recommendedProductTypes;
+
+  /// Non-product changes tied to what the scan saw (habits, sun, sleep…).
+  final List<IngredientTip> beyondProducts;
+  final String disclaimer;
 
   int? scoreFor(SkinMetric m) =>
       metrics.where((s) => s.metric == m).firstOrNull?.score;
@@ -171,6 +198,14 @@ class SkinAnalysis {
     'ingredients_to_avoid': ingredientsToAvoid.map((e) => e.toJson()).toList(),
     'red_flags': redFlags.map((e) => e.toJson()).toList(),
     'model': model,
+    if (focus != null) 'focus': focus!.name,
+    'routine_adjustments': routineAdjustments,
+    'ingredient_warnings': ingredientWarnings,
+    'recommended_product_types': recommendedProductTypes,
+    'beyond_products': [
+      for (final b in beyondProducts) {'title': b.name, 'detail': b.why},
+    ],
+    'disclaimer': disclaimer,
   };
 
   /// Defensive parser: the backend validates against a strict schema, but the
@@ -216,8 +251,33 @@ class SkinAnalysis {
       ),
       redFlags: listOf(j['red_flags'], RedFlag.fromJson),
       model: j['model'] as String? ?? '',
+      focus: SkinFocus.values.asNameMap()[j['focus']],
+      routineAdjustments: strings(j['routine_adjustments']),
+      ingredientWarnings: strings(j['ingredient_warnings']),
+      recommendedProductTypes: strings(j['recommended_product_types']),
+      beyondProducts: listOf(j['beyond_products'], (b) {
+        final title = b['title'], detail = b['detail'];
+        return title is String && detail is String
+            ? IngredientTip(name: title, why: detail)
+            : null;
+      }),
+      disclaimer: switch (j['disclaimer']) {
+        final String d when d.isNotEmpty => d,
+        _ => defaultDisclaimer,
+      },
     );
   }
+}
+
+/// The scan's tracking mode.
+enum SkinFocus {
+  cure('Clear', "Calm what's active first."),
+  glow('Glow', 'Build radiance and evenness.'),
+  maintain('Maintain', "Keep what's working.");
+
+  const SkinFocus(this.label, this.line);
+  final String label;
+  final String line;
 }
 
 class SkinScan {
@@ -228,6 +288,7 @@ class SkinScan {
     required this.analysis,
     this.face,
     this.radiance,
+    this.measure,
   });
 
   final String id;
@@ -246,6 +307,9 @@ class SkinScan {
   /// been measured, or when the scan has no landmarks to measure with.
   final Radiance? radiance;
 
+  /// What each lens measured, overall and per zone. Null until measured.
+  final SkinMeasure? measure;
+
   SkinScan withRadiance(Radiance r) => SkinScan(
     id: id,
     createdAt: createdAt,
@@ -253,6 +317,17 @@ class SkinScan {
     analysis: analysis,
     face: face,
     radiance: r,
+    measure: measure,
+  );
+
+  SkinScan withMeasure(SkinMeasure m) => SkinScan(
+    id: id,
+    createdAt: createdAt,
+    photoPath: photoPath,
+    analysis: analysis,
+    face: face,
+    radiance: radiance,
+    measure: m,
   );
 
   Map<String, Object?> toRow() => {
@@ -264,6 +339,7 @@ class SkinScan {
     'analysis_json': jsonEncode(analysis.toJson()),
     'face_json': face?.encode(),
     'radiance_json': radiance == null ? null : jsonEncode(radiance!.toJson()),
+    'measure_json': measure == null ? null : jsonEncode(measure!.toJson()),
   };
 
   factory SkinScan.fromRow(Map<String, Object?> r) => SkinScan(
@@ -278,5 +354,23 @@ class SkinScan {
       final String raw => Radiance.fromJson(jsonDecode(raw)),
       _ => null,
     },
+    measure: switch (r['measure_json']) {
+      final String raw => SkinMeasure.fromJson(jsonDecode(raw)),
+      _ => null,
+    },
   );
+}
+
+/// What's bothering the person today, picked right before a scan. Sent to
+/// the AI so it looks for these specifically.
+enum SkinIssue {
+  dryness('dryness', 'Dryness'),
+  redness('redness', 'Redness'),
+  breakouts('breakouts', 'Breakouts'),
+  darkSpots('dark_spots', 'Dark spots'),
+  oiliness('oiliness', 'Oiliness');
+
+  const SkinIssue(this.key, this.label);
+  final String key;
+  final String label;
 }

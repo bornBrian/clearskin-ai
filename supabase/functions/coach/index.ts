@@ -7,16 +7,20 @@ import { z } from "npm:zod@4.6.7";
 import type Anthropic from "npm:@anthropic-ai/sdk@1.2.0";
 import { claude, FALLBACK_BETA, finalText, mapClaudeError, model } from "../_shared/claude.ts";
 import {
-  countUsage,
+  deviceHash,
   errorResponse,
+  finishUsage,
   HttpError,
   intEnv,
   isPremium,
   json,
-  recordUsage,
+  readJson,
+  releaseUsage,
+  requireSpendHeadroom,
   requireUser,
-  startOfUtcDay,
+  reserveUsage,
 } from "../_shared/common.ts";
+import { requireIntegrity } from "../_shared/integrity.ts";
 
 const RequestSchema = z.object({
   messages: z
@@ -50,11 +54,15 @@ Safety boundaries:
 
 Stay on topic: skin, hair and nails, sun safety, and lifestyle factors that affect skin (sleep, stress, diet, exercise, shaving, makeup). Politely steer other topics back.`;
 
+const MAX_BODY_BYTES = 120_000;
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+  let reservation: number | undefined;
   try {
     const userId = await requireUser(req);
-    const parsed = RequestSchema.safeParse(await req.json().catch(() => null));
+    await requireIntegrity(req, userId, "coach");
+    const parsed = RequestSchema.safeParse(await readJson(req, MAX_BODY_BYTES));
     if (!parsed.success) throw new HttpError(400, "bad_request", "Invalid request.");
     const { messages, context } = parsed.data;
     if (messages[messages.length - 1].role !== "user") {
@@ -64,20 +72,36 @@ Deno.serve(async (req) => {
     if (!(await isPremium(userId))) {
       throw new HttpError(402, "premium_required", "The skin coach is a Premium feature.");
     }
-    const today = await countUsage(userId, "coach", startOfUtcDay());
-    if (today >= intEnv("PREMIUM_DAILY_COACH_MESSAGES", 60)) {
+    await requireSpendHeadroom();
+    const r = await reserveUsage({
+      userId,
+      kind: "coach",
+      device: deviceHash(req),
+      premium: true,
+      freeLimit: 0,
+      windowDays: 1,
+      dailyLimit: intEnv("PREMIUM_DAILY_COACH_MESSAGES", 60),
+      attemptLimit: intEnv("COACH_ATTEMPTS_PER_DAY", 80),
+    });
+    if ("blocked" in r) {
       throw new HttpError(
         429,
         "quota_exceeded",
         "You've reached today's coach limit. It resets at midnight UTC.",
       );
     }
+    reservation = r.eventId;
 
-    // Context goes in its own system block after the stable instructions so
-    // the instruction prefix stays byte-identical across users.
+    // Three cache breakpoints: the instructions (shared by every user), the
+    // user's context (stable through a conversation), and the conversation
+    // so far (each turn reads the previous turn's prefix).
     const system: Anthropic.Beta.BetaTextBlockParam[] = [
-      { type: "text", text: SYSTEM_PROMPT },
-      { type: "text", text: `CONTEXT:\n${JSON.stringify(context).slice(0, 12000)}` },
+      { type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
+      {
+        type: "text",
+        text: `CONTEXT:\n${JSON.stringify(context).slice(0, 12000)}`,
+        cache_control: { type: "ephemeral" },
+      },
     ];
 
     // The API requires alternating turns starting with the user.
@@ -91,12 +115,17 @@ Deno.serve(async (req) => {
       }
     }
     while (turns.length && turns[0].role !== "user") turns.shift();
+    const last = turns[turns.length - 1];
+    last.content = [
+      { type: "text", text: last.content as string, cache_control: { type: "ephemeral" } },
+    ];
 
     let message;
     try {
       message = await claude().beta.messages.create({
         model: model(),
-        max_tokens: 8000,
+        // Replies are short by instruction; this only caps a runaway.
+        max_tokens: 4000,
         betas: [FALLBACK_BETA],
         fallbacks: "default",
         output_config: { effort: "low" },
@@ -107,21 +136,18 @@ Deno.serve(async (req) => {
       mapClaudeError(err);
     }
 
+    await finishUsage(reservation, { model: message.model, ...message.usage });
+    reservation = undefined;
+
     if (message.stop_reason === "refusal") {
       return json({
         reply:
           "I can't help with that one. If it's about a health concern, a doctor or dermatologist is the right person to ask.",
       });
     }
-    const reply = finalText(message);
-
-    await recordUsage(userId, "coach", {
-      model: message.model,
-      input_tokens: message.usage.input_tokens,
-      output_tokens: message.usage.output_tokens,
-    });
-    return json({ reply });
+    return json({ reply: finalText(message) });
   } catch (err) {
+    if (reservation !== undefined) await releaseUsage(reservation);
     return errorResponse(err);
   }
 });

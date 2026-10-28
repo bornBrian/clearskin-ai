@@ -48,6 +48,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     'insights' => 'Find what breaks\nyou out.',
     'scan' => 'Scan every week.\nWatch it change.',
     'products' => 'Check everything\nyou own.',
+    'renewal' => 'Keep your\nprogress going.',
+    'ads' => 'No ads.\nJust your skin.',
     _ => 'Everything your\nskin plan needs.',
   };
 
@@ -170,11 +172,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                         ),
                       ),
                       error: (e, _) => _Unavailable(
+                        issue: e is PlansUnavailable
+                            ? e.issue
+                            : PlansIssue.storeUnavailable,
                         onRetry: () => ref.invalidate(_plansProvider),
                       ),
                       data: (list) {
                         if (list.isEmpty) {
                           return _Unavailable(
+                            issue: PlansIssue.noProducts,
                             onRetry: () => ref.invalidate(_plansProvider),
                           );
                         }
@@ -257,9 +263,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                         style: FilledButton.styleFrom(
                           backgroundColor: cream,
                           foregroundColor: BrandColors.charcoal,
-                          disabledBackgroundColor: cream.withValues(
-                            alpha: 0.3,
-                          ),
+                          disabledBackgroundColor: cream.withValues(alpha: 0.3),
                         ),
                         onPressed: _selected == null || _busy ? null : _buy,
                         child: _busy
@@ -313,11 +317,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 
   String _finePrint(Plan? p) {
     if (p == null) return '';
+    if (p.prepaid) {
+      return '${p.priceString} for one ${p.periodLabel}. Doesn\'t renew '
+          'automatically; we\'ll remind you a week before it ends.';
+    }
     final period = p.periodLabel.isEmpty ? '' : ' a ${p.periodLabel}';
     final trial = p.trialDays != null
         ? '${p.trialDays} days free, then ${p.priceString}$period. '
         : '${p.priceString}$period. ';
-    return '${trial}Cancel anytime in Google Play.';
+    return '${trial}Renews automatically. Cancel anytime in Google Play.';
   }
 }
 
@@ -327,12 +335,13 @@ class _Comparison extends StatelessWidget {
   const _Comparison();
 
   static const _rows = [
-    ('Skin scans', '1', 'Unlimited'),
-    ('Product checks', '3 a day', 'Unlimited'),
-    ('Before & after', null, '✓'),
-    ('Every measure tracked', null, '✓'),
+    ('Skin scans', '2 a month', 'Unlimited'),
+    ('Ads', 'Yes', 'None'),
+    ('AI skin coach', null, '✓'),
+    ('Before & after, with cards', null, '✓'),
+    ('Every measure, over time', null, '✓'),
     ('Breakout triggers', null, '✓'),
-    ('Skin coach', null, '✓'),
+    ('Product checks', '3 a day', 'Unlimited'),
   ];
 
   @override
@@ -345,13 +354,13 @@ class _Comparison extends StatelessWidget {
       child: text == '✓'
           ? const Icon(Icons.check_rounded, size: 20, color: cream)
           : Text(
-        text ?? '—',
-        textAlign: TextAlign.center,
-        style: context.text.titleSmall?.copyWith(
-          color: strong ? cream : dim,
-          fontWeight: strong ? FontWeight.w600 : FontWeight.w400,
-        ),
-      ),
+              text ?? '—',
+              textAlign: TextAlign.center,
+              style: context.text.titleSmall?.copyWith(
+                color: strong ? cream : dim,
+                fontWeight: strong ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
     );
     return Column(
       children: [
@@ -546,7 +555,9 @@ class _PlanTile extends StatelessWidget {
               ),
               const SizedBox(height: Space.sm),
               Text(
-                '${plan.priceString} / ${plan.periodLabel}',
+                plan.prepaid
+                    ? '${plan.priceString} once'
+                    : '${plan.priceString} / ${plan.periodLabel}',
                 style: context.text.labelMedium?.copyWith(
                   color: cream.withValues(alpha: 0.8),
                 ),
@@ -560,8 +571,24 @@ class _PlanTile extends StatelessWidget {
 }
 
 class _Unavailable extends ConsumerWidget {
-  const _Unavailable({required this.onRetry});
+  const _Unavailable({required this.issue, required this.onRetry});
+  final PlansIssue issue;
   final VoidCallback onRetry;
+
+  /// What went wrong, in words that point at the fix. Debug builds say
+  /// exactly which piece of setup is missing.
+  String get _message => switch (issue) {
+    PlansIssue.notConfigured =>
+      kDebugMode
+          ? 'Billing isn\'t set up in this build: RC_ANDROID_KEY is empty in env/dev.json.'
+          : 'Premium is opening very soon. Everything free stays free.',
+    PlansIssue.noProducts =>
+      kDebugMode
+          ? 'RevenueCat has no packages in its current offering. Create the subscriptions in Play Console, import them in RevenueCat and add them to the "default" offering.'
+          : 'Plans aren\'t available in your region yet. Please check back soon.',
+    PlansIssue.storeUnavailable => 'Google Play billing isn\'t available. Make sure the Play Store is installed, up to date and signed in.',
+    PlansIssue.offline => 'You\'re offline. Connect to see plans.',
+  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -571,7 +598,7 @@ class _Unavailable extends ConsumerWidget {
       child: Column(
         children: [
           Text(
-            'Plans couldn\'t load. Check your connection.',
+            _message,
             style: context.text.bodyMedium?.copyWith(color: cream),
             textAlign: TextAlign.center,
           ),

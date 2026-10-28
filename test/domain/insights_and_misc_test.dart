@@ -93,6 +93,58 @@ void main() {
       };
       expect(Streaks.longest(days), 4);
     });
+
+    Set<String> run(DateTime start, List<int> offsets) => {
+      for (final i in offsets) Dates.dayKey(start.add(Duration(days: i))),
+    };
+
+    test('7 days in a row earn a saver that covers one missed day', () {
+      final start = DateTime(2026, 3, 1);
+      // Days 0-6 done, day 7 missed, days 8-9 done.
+      final days = run(start, [0, 1, 2, 3, 4, 5, 6, 8, 9]);
+      final s = Streaks.compute(days, now: DateTime(2026, 3, 10, 20));
+      expect(s.current, 9);
+      expect(s.savers, 0, reason: 'the one saver was used');
+      expect(s.savedDays, {Dates.dayKey(DateTime(2026, 3, 8))});
+      expect(s.doneToday, isTrue);
+    });
+
+    test('two missed days in a row still end the streak', () {
+      final start = DateTime(2026, 3, 1);
+      final days = run(start, [0, 1, 2, 3, 4, 5, 6, 9, 10]);
+      final s = Streaks.compute(days, now: DateTime(2026, 3, 11, 20));
+      expect(s.current, 2);
+      expect(s.best, 7);
+      expect(s.savedDays, isEmpty);
+    });
+
+    test('no saver before the first 7 days, and never more than 2', () {
+      final start = DateTime(2026, 3, 1);
+      expect(
+        Streaks.compute(
+          run(start, [0, 1, 2, 4]),
+          now: DateTime(2026, 3, 5, 20),
+        ).current,
+        1,
+      );
+      final long = Streaks.compute(
+        run(start, [for (var i = 0; i < 30; i++) i]),
+        now: DateTime(2026, 3, 30, 20),
+      );
+      expect(long.current, 30);
+      expect(long.savers, Streaks.maxSavers);
+    });
+
+    test('an unfinished today never costs a saver', () {
+      final start = DateTime(2026, 3, 1);
+      final s = Streaks.compute(
+        run(start, [for (var i = 0; i < 7; i++) i]),
+        now: DateTime(2026, 3, 8, 9),
+      );
+      expect(s.current, 7);
+      expect(s.savers, 1);
+      expect(s.doneToday, isFalse);
+    });
   });
 
   group('SkinForecaster', () {

@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
+import '../../data/models/account_status.dart';
 import '../../data/models/scan.dart';
 import '../../data/repositories/repositories.dart';
 import '../../services/backend_api.dart';
@@ -18,9 +19,10 @@ import '../../domain/scan/face_zones.dart';
 import '../../domain/scan/live_guidance.dart';
 import '../../services/photo_service.dart';
 import '../../services/telemetry.dart';
+import '../paywall/out_of_scans_sheet.dart';
 import 'live_face_guide.dart';
 
-enum _Phase { gate, consent, camera, checking, analyzing }
+enum _Phase { gate, consent, issues, camera, checking, analyzing }
 
 class ScanCaptureScreen extends ConsumerStatefulWidget {
   const ScanCaptureScreen({super.key});
@@ -38,6 +40,13 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
   List<Offset> _facePoints = const [];
   FaceGeometry? _geometry;
   LiveFaceGuide? _guide;
+  final Set<SkinIssue> _issues = {};
+
+  /// Front first (hairline to chin), then each side for the cheeks,
+  /// jawline and temples a straight-on photo foreshortens.
+  ScanPose _pose = ScanPose.front;
+  ProcessedPhoto? _front;
+  final List<ProcessedPhoto> _sides = [];
 
   /// When the live camera last (re)started. The shutter waits for the live
   /// checks, but never forever: on a phone where live detection struggles,
@@ -81,36 +90,63 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
   }
 
   Future<void> _start() async {
-    // Free tier: one complete scan. The server enforces this too.
-    final premium = ref.read(premiumProvider);
-    // Only usable scans count, matching the server (a blurry photo
-    // shouldn't cost the free scan).
-    final scans = await ref.read(scansProvider.future);
-    final used = scans.where((s) => s.analysis.usable).length;
-    if (!premium && used >= FreeLimits.lifetimeScans) {
-      if (!mounted) return;
-      final bought = await context.push<bool>('/paywall?source=scan');
-      if (!mounted) return;
-      if (bought != true && !ref.read(premiumProvider)) {
-        context.pop();
-        return;
-      }
+    if (!await _ensureScanAllowed()) {
+      if (mounted) context.pop();
+      return;
     }
     final consent = await ref.read(kvProvider).get(KvKeys.photoConsent);
     if (!mounted) return;
     ref.read(telemetryProvider).track(Ev.scanStarted);
-    if (consent != '1') {
-      setState(() => _phase = _Phase.consent);
+    setState(() => _phase = consent == '1' ? _Phase.issues : _Phase.consent);
+  }
+
+  /// Free plan: 2 scans per rolling 30 days (the server's numbers when
+  /// online, this phone's history when not). Out of scans → Premium, or a
+  /// rewarded video for one more. The server enforces all of this anyway.
+  Future<bool> _ensureScanAllowed() async {
+    if (ref.read(premiumProvider)) return true;
+    final status = await ref.read(accountStatusProvider.notifier).refresh();
+    final bool allowed;
+    if (status != null) {
+      allowed = status.canScan;
     } else {
-      setState(() => _phase = _Phase.camera);
-      await _initCamera();
+      // Only usable scans count, matching the server (a blurry photo
+      // shouldn't cost a scan).
+      final since = DateTime.now().subtract(
+        const Duration(days: FreeLimits.scanWindowDays),
+      );
+      final recent = (await ref.read(scansProvider.future))
+          .where((s) => s.analysis.usable && s.createdAt.isAfter(since));
+      allowed = recent.length < FreeLimits.scansPerWindow;
     }
+    if (allowed) return true;
+    return _outOfScans(status);
+  }
+
+  Future<bool> _outOfScans(AccountStatus? status) async {
+    if (!mounted) return false;
+    ref.read(telemetryProvider).track(Ev.outOfScans);
+    final choice = await showOutOfScansSheet(context, status);
+    if (!mounted) return false;
+    switch (choice) {
+      case OutOfScansChoice.premium:
+        final bought = await context.push<bool>('/paywall?source=scan');
+        return bought == true || ref.read(premiumProvider);
+      case OutOfScansChoice.video:
+        return earnScanWithVideo(ref, context);
+      case null:
+        return false;
+    }
+  }
+
+  Future<void> _issuesDone() async {
+    setState(() => _phase = _Phase.camera);
+    await _initCamera();
   }
 
   Future<void> _acceptConsent() async {
     await ref.read(kvProvider).set(KvKeys.photoConsent, '1');
-    setState(() => _phase = _Phase.camera);
-    await _initCamera();
+    setState(() => _phase = _Phase.issues);
   }
 
   Future<void> _initCamera() async {
@@ -211,23 +247,23 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
   Future<void> _check(String path) async {
     setState(() => _phase = _Phase.checking);
     try {
-      final check = await ref.read(photoServiceProvider).process(path);
+      final check = await ref
+          .read(photoServiceProvider)
+          .process(path, pose: _pose);
       if (!mounted) return;
-      _facePoints = check.facePoints;
-      _geometry = check.geometry;
       if (check.issues.isNotEmpty) {
         ref.read(telemetryProvider).track(Ev.scanQualityIssue, {
           'issues': check.issues.map((i) => i.name).join(','),
         });
       }
       if (check.issues.isEmpty) {
-        await _analyze(check.photo);
+        await _accept(check);
         return;
       }
       final useAnyway = await _showIssues(check);
       if (!mounted) return;
       if (useAnyway) {
-        await _analyze(check.photo);
+        await _accept(check);
       } else {
         ref.read(photoServiceProvider).discard(check.photo);
         _backToCamera();
@@ -237,6 +273,51 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
       showSnack(context, 'That image format isn\'t supported.');
       _backToCamera();
     }
+  }
+
+  /// A photo passed its checks: move on to the next pose, or analyse.
+  Future<void> _accept(CaptureCheck check) async {
+    switch (_pose) {
+      case ScanPose.front:
+        _front = check.photo;
+        _facePoints = check.facePoints;
+        _geometry = check.geometry;
+        // No live camera (gallery-only phone): the front photo alone.
+        if (_camera == null) return _analyze(check.photo);
+        _goToPose(ScanPose.sideA);
+      case ScanPose.sideA:
+        _sides.add(check.photo);
+        _guide?.firstSideYaw = _guide?.lastYaw;
+        _goToPose(ScanPose.sideB);
+      case ScanPose.sideB:
+        _sides.add(check.photo);
+        await _analyze(_front!);
+    }
+  }
+
+  void _goToPose(ScanPose pose) {
+    HapticFeedback.selectionClick();
+    setState(() => _pose = pose);
+    _guide?.pose = pose;
+    _backToCamera();
+  }
+
+  /// Side photos make the report better but aren't required.
+  Future<void> _skipSides() async {
+    await _guide?.stop();
+    final front = _front;
+    if (front != null) await _analyze(front);
+  }
+
+  void _resetPoses() {
+    for (final s in _sides) {
+      ref.read(photoServiceProvider).discard(s);
+    }
+    _sides.clear();
+    _front = null;
+    _pose = ScanPose.front;
+    _guide?.firstSideYaw = null;
+    _guide?.pose = ScanPose.front;
   }
 
   Future<bool> _showIssues(CaptureCheck check) async {
@@ -315,12 +396,19 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
       final analysis = await ref
           .read(backendApiProvider)
           .analyzeSkin(
-            jpeg: photo.jpeg,
+            jpeg: photo.aiJpeg,
             profile: profile,
             previous: ref.read(latestScanProvider)?.analysis,
+            issues: _issues,
+            sideJpegs: [for (final s in _sides) s.aiJpeg],
           );
+      unawaited(ref.read(accountStatusProvider.notifier).refresh());
       final id = newId();
       final path = await ref.read(photoServiceProvider).persist(photo, id);
+      // Side photos are only for the analysis; the front one is kept.
+      for (final s in _sides) {
+        ref.read(photoServiceProvider).discard(s);
+      }
       await ref
           .read(scansProvider.notifier)
           .add(
@@ -345,9 +433,10 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
       if (!mounted) return;
       switch (e.kind) {
         case ApiErrorKind.premiumRequired:
-          final bought = await context.push<bool>('/paywall?source=scan');
-          if (!mounted) return;
-          if (bought == true) {
+          final status = await ref
+              .read(accountStatusProvider.notifier)
+              .refresh();
+          if (await _outOfScans(status)) {
             await _analyze(photo);
             return;
           }
@@ -358,6 +447,7 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
       }
       ref.read(photoServiceProvider).discard(photo);
       if (!mounted) return;
+      _resetPoses();
       setState(() => _phase = _Phase.camera);
       await _initCamera();
     }
@@ -384,6 +474,13 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
         body: Center(child: CircularProgressIndicator()),
       ),
       _Phase.consent => _ConsentView(onAccept: _acceptConsent),
+      _Phase.issues => _IssuesView(
+        selected: _issues,
+        onToggle: (i) => setState(
+          () => _issues.contains(i) ? _issues.remove(i) : _issues.add(i),
+        ),
+        onDone: _issuesDone,
+      ),
       _Phase.camera || _Phase.checking => _cameraView(),
       _Phase.analyzing => _AnalyzingView(photo: _photo, points: _facePoints),
     };
@@ -442,7 +539,26 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
                       tooltip: 'Close',
                     ),
                     const Spacer(),
+                    if (_pose.isSide)
+                      TextButton(
+                        onPressed: checking ? null : _skipSides,
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Skip sides'),
+                      ),
                   ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Space.xs),
+                  child: Text(
+                    '${_pose.index + 1} of ${ScanPose.values.length} · '
+                    '${_pose.label}',
+                    style: context.text.labelMedium?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      letterSpacing: 1.1,
+                    ),
+                  ),
                 ),
                 if (_guide != null && !checking)
                   ListenableBuilder(
@@ -458,7 +574,9 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       IconButton(
-                        onPressed: checking ? null : _pickFromGallery,
+                        onPressed: checking || _pose.isSide
+                            ? null
+                            : _pickFromGallery,
                         icon: const Icon(
                           Icons.photo_library_rounded,
                           color: Colors.white,
@@ -691,6 +809,64 @@ class _NoGuide implements Listenable {
   void addListener(VoidCallback listener) {}
   @override
   void removeListener(VoidCallback listener) {}
+}
+
+/// "Anything bothering you today?" One tap each, optional. Tells the AI
+/// where to look and shapes the report's priorities.
+class _IssuesView extends StatelessWidget {
+  const _IssuesView({
+    required this.selected,
+    required this.onToggle,
+    required this.onDone,
+  });
+
+  final Set<SkinIssue> selected;
+  final ValueChanged<SkinIssue> onToggle;
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        actions: [TextButton(onPressed: onDone, child: const Text('Skip'))],
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Anything bothering\nyour skin today?',
+                style: context.text.headlineMedium,
+              ),
+              const SizedBox(height: Space.xs),
+              Text(
+                'Pick any. The scan looks closer at these.',
+                style: context.text.bodyMedium?.copyWith(
+                  color: context.colors.inkMuted,
+                ),
+              ),
+              const SizedBox(height: Space.lg),
+              for (final issue in SkinIssue.values)
+                OptionTile(
+                  title: issue.label,
+                  multi: true,
+                  selected: selected.contains(issue),
+                  onTap: () => onToggle(issue),
+                ),
+              const Spacer(),
+              FilledButton(
+                onPressed: onDone,
+                child: Text(selected.isEmpty ? 'Nothing today' : 'Continue'),
+              ),
+              const SizedBox(height: Space.md),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _ConsentView extends StatelessWidget {

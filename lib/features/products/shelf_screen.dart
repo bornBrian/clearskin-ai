@@ -10,6 +10,7 @@ import '../../data/models/product.dart';
 import '../../domain/ingredients/conflict_checker.dart';
 import '../../domain/ingredients/product_analyzer.dart';
 import '../../services/device_services.dart';
+import '../../domain/products/shelf_life.dart';
 
 class ShelfScreen extends ConsumerStatefulWidget {
   const ShelfScreen({super.key});
@@ -116,13 +117,17 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen> {
                         horizontal: Space.gutter,
                       ),
                       sliver: SliverGrid.builder(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: Space.lg,
-                              crossAxisSpacing: Space.md,
-                              childAspectRatio: 0.58,
-                            ),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: Space.lg,
+                          crossAxisSpacing: Space.md,
+                          // Taller tiles when the person uses larger text, so
+                          // names and labels never get cut off.
+                          childAspectRatio:
+                              0.58 /
+                              (MediaQuery.textScalerOf(context).scale(14) / 14)
+                                  .clamp(1.0, 1.3),
+                        ),
                         itemCount: shown.length,
                         itemBuilder: (_, i) => _ProductCard(product: shown[i]),
                       ),
@@ -268,7 +273,8 @@ class _ProductCard extends ConsumerWidget {
       ProductCategory.moisturizer ||
       ProductCategory.mask ||
       ProductCategory.eyeCream => const Color(0xFFECE4D8),
-      ProductCategory.makeup || ProductCategory.other => const Color(0xFFE7E7E1),
+      ProductCategory.makeup ||
+      ProductCategory.other => const Color(0xFFE7E7E1),
     };
   }
 
@@ -277,8 +283,10 @@ class _ProductCard extends ConsumerWidget {
     final c = context.colors;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final profile = ref.watch(profileProvider).value;
-    final verdict = ProductAnalyzer.analyze(product.ingredientsRaw, profile)
-        .verdict;
+    final verdict = ProductAnalyzer.analyze(
+      product.ingredientsRaw,
+      profile,
+    ).verdict;
     final when = switch (product.usage) {
       ProductUsage.am => 'AM',
       ProductUsage.pm => 'PM',
@@ -346,7 +354,16 @@ class _ProductCard extends ConsumerWidget {
             overflow: TextOverflow.ellipsis,
             style: context.text.titleSmall?.copyWith(height: 1.25),
           ),
-          if (verdict != Verdict.unknown) ...[
+          if (ShelfLife.freshness(product, DateTime.now()) case final f?
+              when f != Freshness.fresh) ...[
+            const SizedBox(height: 4),
+            Text(
+              f == Freshness.expired ? 'Past its best' : 'Use soon',
+              style: context.text.labelMedium?.copyWith(
+                color: f == Freshness.expired ? c.bad : c.warn,
+              ),
+            ),
+          ] else if (verdict != Verdict.unknown) ...[
             const SizedBox(height: 4),
             Text(
               verdict.label,

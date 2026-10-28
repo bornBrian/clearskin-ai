@@ -1,6 +1,9 @@
 // POST /functions/v1/delete-account
-// Permanently deletes the caller's server-side data: usage records, the
-// RevenueCat customer record, and the auth user. Required by Google Play's
+// Permanently deletes the caller's server-side data: the RevenueCat
+// customer record, scan credits and the auth user. Usage rows are unlinked
+// (the foreign key sets user_id to null) rather than deleted, so a device's
+// free scans can't be reset by deleting and re-creating an account. They
+// hold no personal data and are purged after 90 days. Required by Google Play's
 // account-deletion policy. Store subscriptions must still be cancelled by the
 // user in Google Play / App Store (stores don't allow apps to cancel them).
 
@@ -11,9 +14,6 @@ Deno.serve(async (req) => {
   try {
     const userId = await requireUser(req);
     const admin = adminClient();
-
-    const { error: usageErr } = await admin.from("usage_events").delete().eq("user_id", userId);
-    if (usageErr) throw usageErr;
 
     const rcSecret = Deno.env.get("REVENUECAT_SECRET_KEY");
     if (rcSecret) {

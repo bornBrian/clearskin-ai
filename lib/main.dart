@@ -20,6 +20,11 @@ Telemetry? _telemetry;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // debugPrint still writes to logcat in release builds, which any app with
+  // log access or a USB cable can read. Nothing sensitive is logged, but
+  // release builds say nothing at all.
+  if (kReleaseMode) debugPrint = (String? message, {int? wrapWidth}) {};
+
   // Central error sink. Wire Crashlytics or Sentry here before launch.
   FlutterError.onError = (details) {
     FlutterError.presentError(details);

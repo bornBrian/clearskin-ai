@@ -185,7 +185,7 @@ void main() {
         _photo(),
         _w,
         _h,
-        const FaceGeometry(aspect: 0.75, contours: {}),
+        FaceGeometry(aspect: 0.75, contours: {}),
       ),
       isNull,
     );

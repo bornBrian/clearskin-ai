@@ -139,6 +139,26 @@ class Location {
   );
 }
 
+/// Ingredients someone knows their skin reacts to. Products containing
+/// them are flagged and the routine leaves them out.
+enum Reaction {
+  fragrance('Fragrance & perfume'),
+  essentialOils('Essential oils'),
+  alcohol('Drying alcohol'),
+  retinoids('Retinoids (retinol, adapalene)'),
+  acids('Exfoliating acids (AHA, BHA)'),
+  vitaminC('Vitamin C'),
+  niacinamide('Niacinamide'),
+  benzoylPeroxide('Benzoyl peroxide'),
+  sulfates('Sulfates (SLS, SLES)'),
+  preservatives('Strong preservatives (MI, MCI)'),
+  coconut('Coconut oil'),
+  lanolin('Lanolin');
+
+  const Reaction(this.label);
+  final String label;
+}
+
 class UserProfile {
   const UserProfile({
     required this.name,
@@ -160,6 +180,7 @@ class UserProfile {
     this.pmReminder = const ReminderTime(21, 30),
     this.remindersEnabled = true,
     this.reminders = const ReminderSettings(),
+    this.reactsTo = const {},
   });
 
   final String name;
@@ -185,6 +206,9 @@ class UserProfile {
   /// Check-in, weekly scan and smart alerts.
   final ReminderSettings reminders;
   final DateTime createdAt;
+
+  /// Ingredients this person has reacted to before.
+  final Set<Reaction> reactsTo;
 
   String get firstName {
     final trimmed = name.trim();
@@ -218,6 +242,7 @@ class UserProfile {
     ReminderTime? pmReminder,
     bool? remindersEnabled,
     ReminderSettings? reminders,
+    Set<Reaction>? reactsTo,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -239,6 +264,7 @@ class UserProfile {
       remindersEnabled: remindersEnabled ?? this.remindersEnabled,
       reminders: reminders ?? this.reminders,
       createdAt: createdAt,
+      reactsTo: reactsTo ?? this.reactsTo,
     );
   }
 
@@ -262,6 +288,7 @@ class UserProfile {
     'remindersEnabled': remindersEnabled,
     'reminders': reminders.toJson(),
     'createdAt': createdAt.toIso8601String(),
+    'reactsTo': reactsTo.map((e) => e.name).toList(),
   };
 
   String encode() => jsonEncode(toJson());
@@ -317,6 +344,7 @@ class UserProfile {
           : ReminderSettings.fromJson(j['reminders'] as Map<String, dynamic>),
       createdAt:
           DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now(),
+      reactsTo: setOf(Reaction.values, j['reactsTo']),
     );
   }
 
@@ -334,6 +362,8 @@ class UserProfile {
     'shavesFace': shaves,
     'routineComplexity': complexity.name,
     'budget': budget.name,
+    if (reactsTo.isNotEmpty)
+      'knownReactionsToAvoid': reactsTo.map((e) => e.label).toList(),
   };
 }
 

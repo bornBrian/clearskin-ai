@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../core/utils/dates.dart';
 import '../data/db/app_database.dart';
+import '../data/models/account_status.dart';
 import '../data/models/chat.dart';
 import '../data/models/check_in.dart';
 import '../data/models/product.dart';
@@ -15,10 +16,14 @@ import '../domain/forecast/skin_forecast.dart';
 import '../domain/ingredients/conflict_checker.dart';
 import '../domain/insights/insights_engine.dart';
 import '../domain/journey/journey_engine.dart';
+import '../domain/premium/renewal.dart';
+import '../domain/products/shelf_life.dart';
 import '../domain/nudges/nudge_engine.dart';
 import '../domain/routine/routine_engine.dart';
 import '../domain/routine/streaks.dart';
 import '../domain/scan/skin_maps.dart';
+import '../domain/scan/skin_measure.dart';
+import '../services/ads_service.dart';
 import '../services/auth_service.dart';
 import '../services/backend_api.dart';
 import '../services/device_services.dart';
@@ -26,6 +31,7 @@ import '../services/notification_service.dart';
 import '../services/photo_service.dart';
 import '../services/product_lookup_service.dart';
 import '../services/purchases_service.dart';
+import '../services/security_service.dart';
 import '../services/telemetry.dart';
 import '../services/weather_service.dart';
 
@@ -69,7 +75,11 @@ final chatRepoProvider = Provider(
   (ref) => ChatRepository(ref.watch(databaseProvider)),
 );
 
-final backendApiProvider = Provider((ref) => BackendApi());
+final securityServiceProvider = Provider((ref) => SecurityService());
+final backendApiProvider = Provider(
+  (ref) => BackendApi(ref.watch(securityServiceProvider)),
+);
+final adsServiceProvider = Provider((ref) => AdsService(ref.watch(kvProvider)));
 final weatherServiceProvider = Provider(
   (ref) => WeatherService(ref.watch(kvProvider)),
 );
@@ -157,12 +167,147 @@ final premiumProvider = NotifierProvider<PremiumNotifier, bool>(
   PremiumNotifier.new,
 );
 
-/// Free-tier limits. The server enforces AI limits independently; these
-/// drive the UI so users see the paywall before a wasted request.
+/// Free-tier limits. The server enforces AI limits independently (and is
+/// the source of truth via [accountStatusProvider]); these are the offline
+/// fallback so users see the paywall before a wasted request.
 abstract final class FreeLimits {
-  static const lifetimeScans = 1;
+  static const scansPerWindow = 2;
+  static const scanWindowDays = 30;
   static const productChecksPerDay = 3;
 }
+
+/// Ads show only to free users.
+final showAdsProvider = Provider<bool>((ref) => !ref.watch(premiumProvider));
+
+/// Starts AdMob (consent first) once a free user is past onboarding and the
+/// medical disclaimer. Never for Premium. Watched from the app root.
+final adsBootstrapProvider = Provider<void>((ref) {
+  if (!ref.watch(showAdsProvider)) return;
+  if (ref.watch(disclaimerProvider).value != true) return;
+  final profile = ref.watch(profileProvider).value;
+  if (profile == null) return;
+  unawaited(
+    ref.read(adsServiceProvider).start(minor: profile.ageRange.isMinor),
+  );
+});
+
+// ── Subscription & renewal reminders ───────────────────────────────────
+
+class SubscriptionNotifier extends Notifier<SubscriptionInfo?> {
+  @override
+  SubscriptionInfo? build() {
+    final svc = ref.watch(purchasesServiceProvider);
+    final sub = svc.subscriptionChanges.listen((v) => state = v);
+    ref.onDispose(sub.cancel);
+    return svc.subscription;
+  }
+}
+
+final subscriptionProvider =
+    NotifierProvider<SubscriptionNotifier, SubscriptionInfo?>(
+      SubscriptionNotifier.new,
+    );
+
+class RenewalPrefsNotifier extends AsyncNotifier<RenewalPrefs> {
+  @override
+  Future<RenewalPrefs> build() async => RenewalPrefs.fromJson(
+    await ref.read(kvProvider).getJson(KvKeys.renewalPrefs),
+  );
+
+  Future<void> set(RenewalPrefs prefs) async {
+    await ref.read(kvProvider).setJson(KvKeys.renewalPrefs, prefs.toJson());
+    state = AsyncData(prefs);
+  }
+
+  Future<void> remindAt(DateTime at) => set(
+    (state.value ?? const RenewalPrefs()).snoozeUntil(
+      at,
+      ref.read(subscriptionProvider)?.expiresAt,
+    ),
+  );
+
+  Future<void> setEnabled(bool on) => set(
+    RenewalPrefs(mode: on ? RenewalReminderMode.auto : RenewalReminderMode.off),
+  );
+}
+
+final renewalPrefsProvider =
+    AsyncNotifierProvider<RenewalPrefsNotifier, RenewalPrefs>(
+      RenewalPrefsNotifier.new,
+    );
+
+final renewalPlanProvider = Provider<RenewalPlan>((ref) {
+  final prefs = ref.watch(renewalPrefsProvider).value;
+  if (prefs == null) return RenewalPlan.none;
+  return RenewalPlanner.plan(
+    ref.watch(subscriptionProvider),
+    prefs,
+    DateTime.now(),
+  );
+});
+
+/// Keeps renewal notifications in step with the plan. Watched from the app
+/// root.
+final renewalRemindersProvider = Provider<void>((ref) {
+  final plan = ref.watch(renewalPlanProvider);
+  if (ref.watch(renewalPrefsProvider).value == null) return;
+  unawaited(
+    ref
+        .read(notificationServiceProvider)
+        .scheduleRenewalReminders(plan.reminders),
+  );
+});
+
+// ── Server account status (quota, credits, shop links) ─────────────────
+
+class AccountStatusNotifier extends AsyncNotifier<AccountStatus?> {
+  @override
+  Future<AccountStatus?> build() async {
+    final cached = await ref.read(kvProvider).getJson(KvKeys.accountStatus);
+    // Show the last known numbers instantly, then refresh from the server.
+    unawaited(Future.microtask(refresh));
+    return cached == null ? null : AccountStatus.fromJson(cached);
+  }
+
+  Future<AccountStatus?> refresh() async {
+    final fresh = await ref.read(backendApiProvider).accountStatus();
+    if (fresh != null) {
+      await ref.read(kvProvider).setJson(KvKeys.accountStatus, fresh.toJson());
+      state = AsyncData(fresh);
+    }
+    return fresh ?? state.value;
+  }
+}
+
+final accountStatusProvider =
+    AsyncNotifierProvider<AccountStatusNotifier, AccountStatus?>(
+      AccountStatusNotifier.new,
+    );
+
+// ── Medical disclaimer (non-skippable, before anything else) ───────────
+
+abstract final class MedicalDisclaimer {
+  /// Bump when the wording changes materially; everyone sees it again.
+  static const version = 1;
+}
+
+class DisclaimerNotifier extends AsyncNotifier<bool> {
+  @override
+  Future<bool> build() async =>
+      await ref.read(kvProvider).get(KvKeys.disclaimerAccepted) ==
+      '${MedicalDisclaimer.version}';
+
+  Future<void> accept() async {
+    await ref
+        .read(kvProvider)
+        .set(KvKeys.disclaimerAccepted, '${MedicalDisclaimer.version}');
+    state = const AsyncData(true);
+  }
+}
+
+final disclaimerProvider = AsyncNotifierProvider<DisclaimerNotifier, bool>(
+  DisclaimerNotifier.new,
+);
 
 // ── Profile ────────────────────────────────────────────────────────────
 
@@ -172,15 +317,8 @@ class ProfileNotifier extends AsyncNotifier<UserProfile?> {
 
   Future<void> save(UserProfile profile) async {
     await ref.read(profileRepoProvider).save(profile);
+    // routineRemindersProvider re-plans the reminders from the new profile.
     state = AsyncData(profile);
-    unawaited(
-      ref
-          .read(notificationServiceProvider)
-          .scheduleRoutineReminders(
-            profile,
-            routine: ref.read(routineProvider),
-          ),
-    );
   }
 }
 
@@ -203,6 +341,14 @@ class ScansNotifier extends AsyncNotifier<List<SkinScan>> {
   Future<void> remove(String id) async {
     await ref.read(scanRepoProvider).delete(id);
     state = AsyncData([...?state.value?.where((s) => s.id != id)]);
+  }
+
+  Future<void> saveMeasure(String id, SkinMeasure m) async {
+    await ref.read(scanRepoProvider).setMeasure(id, m);
+    state = AsyncData([
+      for (final s in state.value ?? const <SkinScan>[])
+        s.id == id ? s.withMeasure(m) : s,
+    ]);
   }
 
   Future<void> saveRadiance(String id, Radiance r) async {
@@ -309,6 +455,38 @@ final todayCompletedProvider = Provider.family<Set<String>, RoutineSlot>((
       const {};
 });
 
+/// Whether every required step of [slot] is ticked today.
+final slotDoneTodayProvider = Provider.family<bool, RoutineSlot>((ref, slot) {
+  final routine = ref.watch(routineProvider);
+  if (routine == null) return false;
+  final required = routine
+      .stepsFor(slot, DateTime.now())
+      .where((s) => !s.optional)
+      .map((s) => s.id)
+      .toSet();
+  return required.isNotEmpty &&
+      ref.watch(todayCompletedProvider(slot)).containsAll(required);
+});
+
+/// Keeps the routine, check-in and scan-day reminders planned. Re-runs when
+/// the profile or routine changes and when a routine or the check-in is
+/// finished, so today's reminder for it is dropped. Watched from the root.
+final routineRemindersProvider = Provider<void>((ref) {
+  final profile = ref.watch(profileProvider).value;
+  if (profile == null) return;
+  unawaited(
+    ref
+        .read(notificationServiceProvider)
+        .scheduleRoutineReminders(
+          profile,
+          routine: ref.watch(routineProvider),
+          amDoneToday: ref.watch(slotDoneTodayProvider(RoutineSlot.am)),
+          pmDoneToday: ref.watch(slotDoneTodayProvider(RoutineSlot.pm)),
+          checkedInToday: ref.watch(todayCheckInProvider) != null,
+        ),
+  );
+});
+
 /// Days on which every required step of at least one slot was completed.
 final completedDaysProvider = Provider<Set<String>>((ref) {
   final routine = ref.watch(routineProvider);
@@ -329,8 +507,12 @@ final completedDaysProvider = Provider<Set<String>>((ref) {
   return days;
 });
 
+final streakStateProvider = Provider<StreakState>(
+  (ref) => Streaks.compute(ref.watch(completedDaysProvider)),
+);
+
 final streakProvider = Provider<int>(
-  (ref) => Streaks.current(ref.watch(completedDaysProvider)),
+  (ref) => ref.watch(streakStateProvider).current,
 );
 
 // ── Check-ins & insights ───────────────────────────────────────────────
@@ -543,6 +725,33 @@ final smartAlertsProvider = Provider<void>((ref) {
   );
 });
 
+/// Keeps product expiry reminders in step with the shelf. Watched from
+/// the app root.
+final expiryRemindersProvider = Provider<void>((ref) {
+  final products = ref.watch(productsProvider).value;
+  if (products == null) return;
+  final now = DateTime.now();
+  unawaited(
+    ref.read(notificationServiceProvider).scheduleExpiryReminders([
+      for (final p in products)
+        if (p.status == ProductStatus.active)
+          if (ShelfLife.useBy(p) case final end? when end.isAfter(now))
+            (p.displayName, end),
+    ]),
+  );
+});
+
+/// Keeps the day 30/60/90 "see what changed" reminders aligned with the
+/// first usable scan. Watched from the app root.
+final milestonesProvider = Provider<void>((ref) {
+  final scans = ref.watch(usableScansProvider);
+  unawaited(
+    ref
+        .read(notificationServiceProvider)
+        .scheduleMilestones(scans.lastOrNull?.createdAt),
+  );
+});
+
 /// Wipes local data and resets every in-memory provider.
 Future<void> wipeAllLocalData(WidgetRef ref) async {
   await ref.read(databaseProvider).clearAll();
@@ -556,4 +765,7 @@ Future<void> wipeAllLocalData(WidgetRef ref) async {
   ref.invalidate(chatProvider);
   ref.invalidate(weatherProvider);
   ref.invalidate(accountProvider);
+  ref.invalidate(disclaimerProvider);
+  ref.invalidate(renewalPrefsProvider);
+  ref.invalidate(accountStatusProvider);
 }

@@ -10,7 +10,7 @@ class AppDatabase {
   final Database db;
 
   static const _name = 'clearskin.db';
-  static const _version = 3;
+  static const _version = 4;
 
   static Future<AppDatabase> open() async {
     final dir = await getDatabasesPath();
@@ -99,6 +99,14 @@ class AppDatabase {
       case 3:
         // On-device radiance measurement, filled in after the scan.
         await db.execute('ALTER TABLE scans ADD COLUMN radiance_json TEXT');
+      case 4:
+        // Per-lens, per-zone measurements (progress proof) and product
+        // shelf life.
+        final batch = db.batch()
+          ..execute('ALTER TABLE scans ADD COLUMN measure_json TEXT')
+          ..execute('ALTER TABLE products ADD COLUMN opened_at INTEGER')
+          ..execute('ALTER TABLE products ADD COLUMN pao_months INTEGER');
+        await batch.commit(noResult: true);
     }
   }
 

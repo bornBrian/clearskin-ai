@@ -12,6 +12,8 @@ import '../../data/models/check_in.dart';
 import '../../data/models/scan.dart';
 import '../../domain/ingredients/product_analyzer.dart';
 import '../../domain/nudges/nudge_engine.dart';
+import '../paywall/renewal_banner.dart';
+import '../routine/streak_widgets.dart';
 import '../journey/journey_screen.dart';
 import '../routine/routine_screen.dart';
 import '../tips/tips_widgets.dart';
@@ -59,10 +61,13 @@ class TodayScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: Space.xl),
+                        const RenewalBannerCard(),
                         if (hasScan) const _ScoreHero() else const _FirstScan(),
                         const _RedFlagBanner(),
                         if (hasScan) const _TopNudge(),
                         const SizedBox(height: Space.xl),
+                        const StreakLine(),
+                        const SizedBox(height: Space.lg),
                         const _TodayRoutine(),
                         const SizedBox(height: Space.md),
                         const _PlanCard(),
@@ -110,9 +115,16 @@ class _TopBar extends StatelessWidget {
               width: 38,
               height: 38,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: c.primary,
+                shape: BoxShape.circle,
+              ),
               child: initial == null
-                  ? Icon(Icons.person_outline_rounded, size: 18, color: c.onPrimary)
+                  ? Icon(
+                      Icons.person_outline_rounded,
+                      size: 18,
+                      color: c.onPrimary,
+                    )
                   : Text(
                       initial!.toUpperCase(),
                       style: context.text.titleSmall?.copyWith(
@@ -169,14 +181,21 @@ class _ScoreHero extends ConsumerWidget {
                     const SizedBox(height: Space.md),
                     Row(
                       children: [
-                        Text(
-                          'Full report',
-                          style: context.text.labelLarge?.copyWith(
-                            color: c.ink,
+                        Flexible(
+                          child: Text(
+                            'Full report',
+                            style: context.text.labelLarge?.copyWith(
+                              color: c.ink,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 4),
-                        Icon(Icons.arrow_forward_rounded, size: 16, color: c.ink),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 16,
+                          color: c.ink,
+                        ),
                       ],
                     ),
                   ],
@@ -189,9 +208,7 @@ class _ScoreHero extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.symmetric(vertical: Space.md),
               decoration: BoxDecoration(
-                border: Border.symmetric(
-                  horizontal: BorderSide(color: c.line),
-                ),
+                border: Border.symmetric(horizontal: BorderSide(color: c.line)),
               ),
               child: Row(
                 children: [
@@ -235,7 +252,12 @@ class _FirstScan extends StatelessWidget {
       child: InkWell(
         onTap: () => context.push('/scan'),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(Space.lg, Space.xl, Space.lg, Space.lg),
+          padding: const EdgeInsets.fromLTRB(
+            Space.lg,
+            Space.xl,
+            Space.lg,
+            Space.lg,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -372,7 +394,10 @@ class _TodayRoutine extends ConsumerWidget {
     if (routine == null) return const SizedBox.shrink();
     final now = DateTime.now();
     final slot = now.hour >= 15 ? RoutineSlot.pm : RoutineSlot.am;
-    final steps = routine.stepsFor(slot, now).where((s) => !s.optional).toList();
+    final steps = routine
+        .stepsFor(slot, now)
+        .where((s) => !s.optional)
+        .toList();
     final done = ref.watch(todayCompletedProvider(slot));
     final completed = steps.where((s) => done.contains(s.id)).length;
 

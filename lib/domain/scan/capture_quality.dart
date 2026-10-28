@@ -17,6 +17,7 @@ class CaptureMeasurements {
     this.headPitch,
     this.sharpness,
     this.cutOff = false,
+    this.headroom,
     this.eyesOpen,
     this.skinHue,
     this.skinChroma,
@@ -47,6 +48,10 @@ class CaptureMeasurements {
   /// The face box runs past an edge of the photo.
   final bool cutOff;
 
+  /// Space above ML Kit's face box as a fraction of its height (the box
+  /// starts mid-forehead, so this decides whether the hairline is in).
+  final double? headroom;
+
   /// The less-open eye's open probability, 0..1.
   final double? eyesOpen;
 
@@ -67,6 +72,9 @@ enum CaptureIssue {
   tooBright('Too bright. Avoid direct sun or a flash on your face.'),
   unevenLight('Light is coming from one side. Face the light source directly.'),
   faceCut('Part of your face is out of the photo. Bring it all into the oval.'),
+  foreheadCut(
+    'The top of your forehead is cut off. Hold the phone a little further away so your hairline is in the photo.',
+  ),
   eyesClosed('Your eyes were closed. Keep them open and look at the camera.'),
   colourCast(
     'The light is tinting your skin. Daylight from a window reads truest.',
@@ -83,7 +91,11 @@ enum CaptureIssue {
   /// Issues the person may knowingly accept (their light can be hard to
   /// change). Everything else means the photo can't be read reliably.
   bool get acceptable =>
-      this == unevenLight || this == colourCast || this == tooBright;
+      this == unevenLight ||
+      this == colourCast ||
+      this == tooBright ||
+      // A gallery photo may simply be cropped that way.
+      this == foreheadCut;
 }
 
 /// Consistent capture is what makes progress tracking meaningful. Every scan
@@ -112,7 +124,11 @@ abstract final class CaptureQuality {
       issues.add(CaptureIssue.colourCast);
     }
 
-    if (m.cutOff) issues.add(CaptureIssue.faceCut);
+    if (m.cutOff) {
+      issues.add(CaptureIssue.faceCut);
+    } else if ((m.headroom ?? 1) < 0.22) {
+      issues.add(CaptureIssue.foreheadCut);
+    }
     final w = m.faceWidthFraction;
     if (w != null) {
       if (w < 0.32) issues.add(CaptureIssue.tooFar);

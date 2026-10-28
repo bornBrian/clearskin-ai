@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The notification sounds and status-bar icon are referenced by name from
+     Dart, which resource shrinking can't see; without this, release builds
+     drop them and fall back to the default sound and a blank icon. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_clearskin,@raw/clearskin_chime,@raw/clearskin_morning,@raw/clearskin_evening,@raw/clearskin_streak,@raw/clearskin_milestone" />

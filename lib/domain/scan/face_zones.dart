@@ -5,18 +5,57 @@ import 'dart:ui' show Offset;
 /// Facial landmarks saved with a scan: ML Kit contour points grouped by
 /// contour type, normalised to 0..1 of the photo, plus the photo's aspect.
 class FaceGeometry {
-  const FaceGeometry({required this.aspect, required this.contours});
+  FaceGeometry({
+    required this.aspect,
+    required Map<String, List<Offset>> contours,
+  }) : raw = contours;
 
   /// width / height of the stored photo.
   final double aspect;
-  final Map<String, List<Offset>> contours;
 
-  bool get hasLandmarks => contours.isNotEmpty;
+  /// Contours exactly as ML Kit detected them. This is what's stored.
+  final Map<String, List<Offset>> raw;
+
+  /// Contours for measuring and drawing: as detected, except that the face
+  /// outline reaches the hairline (see [withFullForehead]).
+  late final Map<String, List<Offset>> contours = withFullForehead(raw);
+
+  bool get hasLandmarks => raw.isNotEmpty;
+
+  /// How far the outline above the brows is stretched upwards.
+  static const foreheadLift = 1.45;
+
+  /// ML Kit's face contour stops around the middle of the forehead, so
+  /// lenses, the mesh and the forehead zone used to miss its upper part
+  /// (most of it on a high forehead). Points above the brow line are
+  /// lifted by [foreheadLift] × their height above it. Any hair the larger
+  /// outline catches is dropped later by the skin-colour filter in
+  /// SkinMaps, so the outline can be generous.
+  static Map<String, List<Offset>> withFullForehead(
+    Map<String, List<Offset>> c,
+  ) {
+    final oval = c['face'];
+    final brows = [...?c['leftEyebrowTop'], ...?c['rightEyebrowTop']];
+    if (oval == null || oval.length < 8 || brows.isEmpty) return c;
+    final browY = brows.map((p) => p.dy).reduce(math.min);
+    return {
+      ...c,
+      'face': [
+        for (final p in oval)
+          p.dy < browY
+              ? Offset(
+                  p.dx,
+                  math.max(0.0, browY - (browY - p.dy) * foreheadLift),
+                )
+              : p,
+      ],
+    };
+  }
 
   String encode() => jsonEncode({
     'a': aspect,
     'c': {
-      for (final e in contours.entries)
+      for (final e in raw.entries)
         e.key: [
           for (final p in e.value)
             [

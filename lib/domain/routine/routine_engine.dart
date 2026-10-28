@@ -141,13 +141,40 @@ abstract final class RoutineEngine {
       }
     }
 
+    // Never schedule something they've reacted to; for acne, azelaic acid
+    // is the gentle stand-in for a retinoid.
+    final reacts = profile.reactsTo;
+    if (reacts.contains(Reaction.retinoids)) {
+      final hadRetinoid =
+          pmActives.remove(_PmActive.adapalene) |
+          pmActives.remove(_PmActive.retinoid);
+      if (hadRetinoid && !pmActives.contains(_PmActive.azelaic)) {
+        pmActives.insert(0, _PmActive.azelaic);
+      }
+    }
+    if (reacts.contains(Reaction.acids)) {
+      pmActives
+        ..remove(_PmActive.aha)
+        ..remove(_PmActive.bha);
+    }
+    if (reactions(profile).isNotEmpty) {
+      notes.add(
+        'Left out because you react to them: ${reactions(profile).join(', ')}.',
+      );
+    }
+
     final maxActives = minimal ? 1 : (enthusiast ? 3 : 2);
     while (pmActives.length > maxActives) {
       pmActives.removeLast();
     }
 
     // ── Morning ───────────────────────────────────────────────────────
-    final useBpoWash = acne && !sensitive && !minimal && !dry;
+    final useBpoWash =
+        acne &&
+        !sensitive &&
+        !minimal &&
+        !dry &&
+        !reacts.contains(Reaction.benzoylPeroxide);
     am.add(
       RoutineStep(
         id: 'am.cleanse',
@@ -187,11 +214,21 @@ abstract final class RoutineEngine {
       );
     }
 
+    // Dermatological order: cleanse → (shave) → tone → treat → moisturise
+    // → protect. A toner isn't essential, so it's optional and only where
+    // it earns its place: dry, dehydrated or reactive skin, or people who
+    // enjoy a longer routine.
+    final wantsToner = !minimal && (dry || sensitive || enthusiast);
+    if (wantsToner) am.add(_toner(RoutineSlot.am, sensitive: sensitive));
+
     if (!minimal) {
       final vitC =
           (marks || aging || profile.goals.contains(Goal.glow)) &&
-          !pmActives.contains(_PmActive.azelaic);
-      final niacin = oily || clogged || acne || redness;
+          !pmActives.contains(_PmActive.azelaic) &&
+          !reacts.contains(Reaction.vitaminC);
+      final niacin =
+          (oily || clogged || acne || redness) &&
+          !reacts.contains(Reaction.niacinamide);
       if (vitC) {
         am.add(
           RoutineStep(
@@ -260,6 +297,8 @@ abstract final class RoutineEngine {
             : 'Gentle cleanser, 30–60 seconds, pat dry. On treatment nights, wait until skin is fully dry.',
       ),
     );
+
+    if (wantsToner) pm.add(_toner(RoutineSlot.pm, sensitive: sensitive));
 
     final schedule = _schedule(pmActives, sensitive: sensitive);
     for (final active in pmActives) {
@@ -356,6 +395,33 @@ abstract final class RoutineEngine {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────
+
+  /// The reactions that change which steps are chosen, in words.
+  static List<String> reactions(UserProfile p) => [
+    for (final r in p.reactsTo)
+      if (const {
+        Reaction.retinoids,
+        Reaction.acids,
+        Reaction.vitaminC,
+        Reaction.niacinamide,
+        Reaction.benzoylPeroxide,
+      }.contains(r))
+        r.label.split(' (').first.toLowerCase(),
+  ];
+
+  static RoutineStep _toner(RoutineSlot slot, {required bool sensitive}) =>
+      RoutineStep(
+        id: slot == RoutineSlot.am ? 'am.toner' : 'pm.toner',
+        slot: slot,
+        category: ProductCategory.toner,
+        title: 'Hydrating toner',
+        keyIngredients: sensitive
+            ? const ['Glycerin', 'Panthenol', 'Alcohol-free']
+            : const ['Glycerin', 'Hyaluronic acid', 'Alcohol-free'],
+        why: 'A first layer of water on damp skin helps everything after it spread and absorb, and softens tightness after cleansing.',
+        howTo: 'Press a few drops into damp skin with your palms. No cotton pad needed.',
+        optional: true,
+      );
 
   static RoutineStep _moisturizer(
     RoutineSlot slot, {

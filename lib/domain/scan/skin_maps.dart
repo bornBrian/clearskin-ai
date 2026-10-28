@@ -115,6 +115,7 @@ class SkinMaps {
     required this.feather,
     required this.readings,
     required this.radiance,
+    this.skinLightness = 0,
   });
 
   final int width;
@@ -127,6 +128,10 @@ class SkinMaps {
   final Float32List feather;
   final Map<SkinLens, LensReading> readings;
   final Radiance radiance;
+
+  /// Median CIELAB L* of the skin: how brightly the face was lit. Two photos
+  /// far apart here weren't taken in comparable light.
+  final double skinLightness;
 
   /// A pixel counts towards coverage above this value.
   static const threshold = 0.4;
@@ -425,6 +430,7 @@ class SkinMaps {
       mask: mask,
       feather: feather,
       readings: readings,
+      skinLightness: medL,
       radiance: Radiance(
         score: (0.5 * evenness + 0.3 * clarity + 0.2 * sheen).round(),
         evenness: evenness.round(),

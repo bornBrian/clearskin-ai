@@ -11,6 +11,7 @@ import '../../data/models/scan.dart';
 import '../../domain/scan/face_mesh.dart';
 import '../../domain/scan/face_zones.dart';
 import '../../domain/scan/skin_maps.dart';
+import '../../domain/scan/skin_measure.dart';
 import 'skin_lens.dart';
 
 const _moderate = Color(0xFFF0B85F);
@@ -61,6 +62,7 @@ class FaceMap extends StatefulWidget {
     this.initialLens,
     this.previousRadiance,
     this.onRadiance,
+    this.onMeasure,
   });
   final SkinScan scan;
 
@@ -72,6 +74,9 @@ class FaceMap extends StatefulWidget {
 
   /// Called once the photo has been measured, so the reading can be kept.
   final ValueChanged<Radiance>? onRadiance;
+
+  /// Called with every lens's coverage, kept for measured progress.
+  final ValueChanged<SkinMeasure>? onMeasure;
 
   @override
   State<FaceMap> createState() => _FaceMapState();
@@ -114,7 +119,9 @@ class _FaceMapState extends State<FaceMap> with SingleTickerProviderStateMixin {
   }
 
   void _report(LensImages? v) {
-    if (v != null && mounted) widget.onRadiance?.call(v.maps.radiance);
+    if (v == null || !mounted) return;
+    widget.onRadiance?.call(v.maps.radiance);
+    widget.onMeasure?.call(SkinMeasure.of(v.maps));
   }
 
   @override
@@ -141,8 +148,7 @@ class _FaceMapState extends State<FaceMap> with SingleTickerProviderStateMixin {
     final findings = scan.analysis.findings;
     final mapped = findings.where((f) => f.area != 'overall').toList();
     final photo = File(scan.photoPath);
-    final hasPhoto =
-        photo.existsSync() && (mapped.isNotEmpty || _canMeasure);
+    final hasPhoto = photo.existsSync() && (mapped.isNotEmpty || _canMeasure);
     if (!hasPhoto && findings.isEmpty) return const SizedBox.shrink();
     final geometry = scan.face;
     final aspect = geometry?.aspect ?? 0.75;
@@ -587,10 +593,7 @@ class _LensDetail extends StatelessWidget {
         if (reading != null && zones.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Text(
-              'Nothing stands out.',
-              style: context.text.titleSmall,
-            ),
+            child: Text('Nothing stands out.', style: context.text.titleSmall),
           ),
         for (var i = 0; i < zones.length; i++)
           Container(
@@ -901,10 +904,7 @@ class _MeshPainter extends CustomPainter {
       }
       final lipTop = pts('upperLipTop'), lipBottom = pts('lowerLipBottom');
       if (lipTop != null && lipBottom != null) {
-        canvas.drawPath(
-          _smooth([...lipTop, ...lipBottom.reversed]),
-          contour,
-        );
+        canvas.drawPath(_smooth([...lipTop, ...lipBottom.reversed]), contour);
       }
       for (final side in ['left', 'right']) {
         final brow = pts('${side}EyebrowTop');

@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
+import '../ads/ad_banner.dart';
 
 /// Floating dark pill navigation. The active tab is a light circle; the
 /// centre item opens the scan flow instead of switching tabs.
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
   final StatefulNavigationShell shell;
 
   static const _scanIndex = 2;
+
+  /// Branch index of the Routine tab, the one screen with a banner.
+  static const _routineBranch = 1;
 
   static const _items = [
     (Icons.home_outlined, Icons.home_rounded, 'Today'),
@@ -35,9 +41,11 @@ class AppShell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
     final dark = Theme.of(context).brightness == Brightness.dark;
+    final banner =
+        shell.currentIndex == _routineBranch && ref.watch(showAdsProvider);
     final barColor = dark ? c.surfaceAlt : c.ink;
     final iconColor = dark ? c.inkMuted : Colors.white.withValues(alpha: 0.75);
 
@@ -45,53 +53,59 @@ class AppShell extends StatelessWidget {
     return Scaffold(
       extendBody: true,
       body: shell,
-      bottomNavigationBar: DecoratedBox(
-        // Content fades out beneath the bar instead of being cut by it.
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [bg.withValues(alpha: 0), bg.withValues(alpha: 0.92)],
-            stops: const [0, 0.45],
-          ),
-        ),
-        child: SafeArea(
-          minimum: const EdgeInsets.fromLTRB(
-            28,
-            Space.lg,
-            28,
-            Space.navBottomGap,
-          ),
-          child: Container(
-            height: Space.navHeight,
-            padding: const EdgeInsets.symmetric(horizontal: 7),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (banner) const AdBanner(),
+          DecoratedBox(
+            // Content fades out beneath the bar instead of being cut by it.
             decoration: BoxDecoration(
-              color: barColor,
-              borderRadius: BorderRadius.circular(Radii.pill),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.16),
-                  blurRadius: 24,
-                  offset: const Offset(0, 10),
-                ),
-              ],
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [bg.withValues(alpha: 0), bg.withValues(alpha: 0.92)],
+                stops: const [0, 0.45],
+              ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                for (var i = 0; i < _items.length; i++)
-                  _NavButton(
-                    icon: i == _navIndex ? _items[i].$2 : _items[i].$1,
-                    label: _items[i].$3,
-                    selected: i == _navIndex,
-                    isScan: i == _scanIndex,
-                    idleColor: iconColor,
-                    onTap: () => _onTap(context, i),
-                  ),
-              ],
+            child: SafeArea(
+              minimum: const EdgeInsets.fromLTRB(
+                28,
+                Space.lg,
+                28,
+                Space.navBottomGap,
+              ),
+              child: Container(
+                height: Space.navHeight,
+                padding: const EdgeInsets.symmetric(horizontal: 7),
+                decoration: BoxDecoration(
+                  color: barColor,
+                  borderRadius: BorderRadius.circular(Radii.pill),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.16),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    for (var i = 0; i < _items.length; i++)
+                      _NavButton(
+                        icon: i == _navIndex ? _items[i].$2 : _items[i].$1,
+                        label: _items[i].$3,
+                        selected: i == _navIndex,
+                        isScan: i == _scanIndex,
+                        idleColor: iconColor,
+                        onTap: () => _onTap(context, i),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

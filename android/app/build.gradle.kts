@@ -1,3 +1,4 @@
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -15,6 +16,22 @@ val keystoreProperties = Properties().apply {
     if (file.exists()) file.inputStream().use { load(it) }
 }
 val hasReleaseKeystore = keystoreProperties.getProperty("storeFile") != null
+
+// Values passed with --dart-define-from-file arrive here base64-encoded, so
+// env/prod.json stays the single source of truth for native config too.
+val dartDefines: Map<String, String> = (project.findProperty("dart-defines") as String?)
+    ?.split(",")
+    ?.mapNotNull {
+        val pair = String(Base64.getDecoder().decode(it)).split("=", limit = 2)
+        if (pair.size == 2) pair[0] to pair[1] else null
+    }
+    ?.toMap()
+    ?: emptyMap()
+
+// Google's public sample app id: serves test ads only. Release builds must
+// set ADMOB_APP_ID in env/prod.json.
+val admobAppId = dartDefines["ADMOB_APP_ID"]?.takeIf { it.isNotBlank() }
+    ?: "ca-app-pub-3940256099942544~3347511713"
 
 android {
     namespace = "com.clearskinai.clearskin_ai"
@@ -36,6 +53,7 @@ android {
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["admobAppId"] = admobAppId
     }
 
     signingConfigs {
@@ -76,6 +94,8 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     // AppCompat themes (styles.xml) for local_auth's biometric prompt.
     implementation("androidx.appcompat:appcompat:1.7.0")
+    // Play Integrity: proves server calls come from the genuine Play build.
+    implementation("com.google.android.play:integrity:1.4.0")
 }
 
 flutter {

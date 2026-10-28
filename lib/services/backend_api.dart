@@ -8,9 +8,11 @@ import 'package:http/http.dart' show ClientException;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/config/env.dart';
+import '../data/models/account_status.dart';
 import '../data/models/chat.dart';
 import '../data/models/profile.dart';
 import '../data/models/scan.dart';
+import 'security_service.dart';
 
 enum ApiErrorKind {
   offline,
@@ -18,6 +20,7 @@ enum ApiErrorKind {
   quotaExceeded,
   badImage,
   notConfigured,
+  untrusted,
   server,
 }
 
@@ -34,7 +37,9 @@ class ApiException implements Exception {
 /// anonymous Supabase session (no sign-up friction); the session id doubles
 /// as the RevenueCat app-user-id so the server can verify Premium.
 class BackendApi {
-  BackendApi();
+  BackendApi(this._security);
+
+  final SecurityService _security;
 
   SupabaseClient get _client => Supabase.instance.client;
 
@@ -58,16 +63,23 @@ class BackendApi {
 
   String? get userId => Env.hasBackend ? _client.auth.currentUser?.id : null;
 
+  /// [jpeg] should be the small AI copy (≤1024 px, ~150 KB): image tokens
+  /// scale with pixels, so this is the single biggest cost lever.
   Future<SkinAnalysis> analyzeSkin({
     required Uint8List jpeg,
     required UserProfile profile,
     SkinAnalysis? previous,
+    Set<SkinIssue> issues = const {},
+    List<Uint8List> sideJpegs = const [],
   }) async {
     if (Env.aiDemo) return _demoAnalysis(previous);
     final body = {
       'image_base64': base64Encode(jpeg),
       'media_type': 'image/jpeg',
       'profile': profile.toAiContext(),
+      'current_issues': [for (final i in issues) i.key],
+      if (sideJpegs.isNotEmpty)
+        'side_images': [for (final j in sideJpegs.take(2)) base64Encode(j)],
       if (previous != null && previous.usable)
         'previous': {
           'overall_score': previous.overallScore,
@@ -86,7 +98,27 @@ class BackendApi {
         'The analysis came back empty. Please try again.',
       );
     }
-    return SkinAnalysis.fromJson(analysis);
+    return SkinAnalysis.fromJson({
+      ...analysis,
+      if (data['disclaimer'] is String) 'disclaimer': data['disclaimer'],
+    });
+  }
+
+  /// Plan, scan allowance and shop links, as the server sees them. Null in
+  /// demo mode or when offline (callers fall back to cached values).
+  Future<AccountStatus?> accountStatus() async {
+    if (!Env.hasBackend) return null;
+    try {
+      final data = await _invoke(
+        'account-status',
+        const {},
+        timeout: const Duration(seconds: 15),
+      );
+      return AccountStatus.fromJson(data);
+    } on ApiException catch (e) {
+      debugPrint('account-status failed: ${e.message}');
+      return null;
+    }
   }
 
   Future<String> coachReply({
@@ -162,9 +194,24 @@ class BackendApi {
         'Can\'t reach ClearSkin right now. Check your connection.',
       );
     }
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final device = await _security.deviceHash();
+    final integrity = await _security.integrityToken(
+      userId: uid,
+      function: fn,
+      timestampMs: ts,
+    );
     try {
       final res = await _client.functions
-          .invoke(fn, body: body)
+          .invoke(
+            fn,
+            body: body,
+            headers: {
+              'x-cs-ts': '$ts',
+              'x-cs-device': ?device,
+              'x-cs-integrity': ?integrity,
+            },
+          )
           .timeout(timeout);
       final data = res.data;
       if (data is Map<String, dynamic>) return data;
@@ -210,6 +257,10 @@ class BackendApi {
       (422, _) || (_, 'bad_image') => ApiException(
         ApiErrorKind.badImage,
         message ?? 'We couldn\'t analyse that photo. Try a clearer one.',
+      ),
+      (403, _) || (_, 'integrity') => ApiException(
+        ApiErrorKind.untrusted,
+        message ?? 'Please install ClearSkin from Google Play.',
       ),
       _ => ApiException(
         ApiErrorKind.server,

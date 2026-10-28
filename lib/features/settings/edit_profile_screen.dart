@@ -69,6 +69,25 @@ class EditProfileScreen extends ConsumerWidget {
                 if (next.isNotEmpty) save(profile.copyWith(concerns: next));
               },
             ),
+          header('I react to'),
+          Padding(
+            padding: const EdgeInsets.only(bottom: Space.sm),
+            child: Text(
+              'Anything that has made your skin sting, itch or break out. Product checks flag it, and your routine leaves it out.',
+              style: context.text.bodyMedium,
+            ),
+          ),
+          for (final r in Reaction.values)
+            OptionTile(
+              title: r.label,
+              multi: true,
+              selected: profile.reactsTo.contains(r),
+              onTap: () {
+                final next = {...profile.reactsTo};
+                next.contains(r) ? next.remove(r) : next.add(r);
+                save(profile.copyWith(reactsTo: next));
+              },
+            ),
           header('Routine style'),
           for (final r in RoutineComplexity.values)
             OptionTile(

@@ -9,6 +9,7 @@ import '../models/product.dart';
 import '../models/profile.dart';
 import '../models/scan.dart';
 import '../../domain/scan/skin_maps.dart';
+import '../../domain/scan/skin_measure.dart';
 
 /// Small typed key-value store on top of the `kv` table.
 class KeyValueStore {
@@ -61,6 +62,15 @@ abstract final class KvKeys {
 
   /// Which account the skin data on this phone belongs to (Account.key).
   static const dataOwner = 'data_owner_v1';
+  static const firstOpen = 'first_open_at';
+  static const interstitialLog = 'interstitial_log';
+  static const renewalPrefs = 'renewal_prefs_v1';
+  static const accountStatus = 'account_status_v1';
+  static const streakCelebrated = 'streak_celebrated_day';
+
+  /// Version of the medical disclaimer the person accepted. Bump
+  /// [MedicalDisclaimer.version] when the wording changes materially.
+  static const disclaimerAccepted = 'medical_disclaimer_v';
 }
 
 class ProfileRepository {
@@ -101,6 +111,13 @@ class ScanRepository {
   Future<void> setRadiance(String id, Radiance r) => _db.db.update(
     'scans',
     {'radiance_json': jsonEncode(r.toJson())},
+    where: 'id = ?',
+    whereArgs: [id],
+  );
+
+  Future<void> setMeasure(String id, SkinMeasure m) => _db.db.update(
+    'scans',
+    {'measure_json': jsonEncode(m.toJson())},
     where: 'id = ?',
     whereArgs: [id],
   );

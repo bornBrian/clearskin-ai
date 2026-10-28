@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config/env.dart';
@@ -11,11 +12,26 @@ import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/repositories/repositories.dart';
+import '../../domain/premium/renewal.dart';
 import '../../services/backend_api.dart';
+import '../paywall/renewal_banner.dart';
 
 final _appLockEnabledProvider = FutureProvider.autoDispose<bool>(
   (ref) async => await ref.read(kvProvider).get(KvKeys.appLock) == '1',
 );
+
+final _adPrivacyRequiredProvider = FutureProvider<bool>(
+  (ref) => ref.read(adsServiceProvider).privacyOptionsRequired(),
+);
+
+String _planLine(SubscriptionInfo? sub) {
+  final end = sub?.expiresAt;
+  if (sub == null || end == null) return 'Manage in Google Play';
+  final date = DateFormat('d MMM y').format(end);
+  if (sub.billingIssue) return 'Payment problem. Tap to fix in Google Play';
+  if (sub.isTrial) return 'Free trial until $date';
+  return sub.willRenew ? 'Renews $date' : 'Ends $date. Tap to renew';
+}
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -24,6 +40,10 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(profileProvider).value;
     final premium = ref.watch(premiumProvider);
+    final sub = ref.watch(subscriptionProvider);
+    final renewalOn =
+        ref.watch(renewalPrefsProvider).value?.mode != RenewalReminderMode.off;
+    final adPrivacy = ref.watch(_adPrivacyRequiredProvider).value ?? false;
     final lock = ref.watch(_appLockEnabledProvider).value ?? false;
     final c = context.colors;
 
@@ -46,9 +66,7 @@ class SettingsScreen extends ConsumerWidget {
             child: AppCard(
               onTap: premium
                   ? () => launchUrl(
-                      Uri.parse(
-                        'https://play.google.com/store/account/subscriptions',
-                      ),
+                      playSubscriptionsUri(sub),
                       mode: LaunchMode.externalApplication,
                     )
                   : () => context.push('/paywall?source=settings'),
@@ -71,8 +89,8 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                         Text(
                           premium
-                              ? 'Manage or cancel in Google Play'
-                              : 'Unlimited scans, progress, insights & coach',
+                              ? _planLine(sub)
+                              : 'Unlimited scans, coach, no ads',
                           style: context.text.bodySmall,
                         ),
                       ],
@@ -83,6 +101,19 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
+          if (sub != null && sub.expiresAt != null) ...[
+            section('Subscription'),
+            SwitchListTile(
+              secondary: const Icon(Icons.notifications_active_outlined),
+              title: const Text('Renewal reminders'),
+              subtitle: const Text(
+                'A week and a day before Premium ends, if it won\'t renew',
+              ),
+              value: renewalOn,
+              onChanged: (v) =>
+                  ref.read(renewalPrefsProvider.notifier).setEnabled(v),
+            ),
+          ],
           section('Your skin'),
           ListTile(
             leading: const Icon(Icons.face_retouching_natural_rounded),
@@ -144,10 +175,20 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.push('/settings/reminders'),
           ),
           section('Privacy & security'),
+          if (adPrivacy)
+            ListTile(
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Ad privacy choices'),
+              subtitle: const Text('Change your consent for ads'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => ref.read(adsServiceProvider).showPrivacyOptions(),
+            ),
           SwitchListTile(
             secondary: const Icon(Icons.lock_outline_rounded),
             title: const Text('App lock'),
-            subtitle: const Text('Require fingerprint, face or PIN to open'),
+            subtitle: const Text(
+              'Fingerprint, face or PIN to open. Also hides ClearSkin in recent apps and blocks screenshots.',
+            ),
             value: lock,
             onChanged: (v) async {
               final svc = ref.read(appLockServiceProvider);
@@ -162,6 +203,7 @@ class SettingsScreen extends ConsumerWidget {
               }
               if (v && !await svc.authenticate()) return;
               await ref.read(kvProvider).set(KvKeys.appLock, v ? '1' : '0');
+              await ref.read(securityServiceProvider).setPrivateWindow(v);
               ref.invalidate(_appLockEnabledProvider);
             },
           ),

@@ -15,3 +15,11 @@ verify_jwt = false
 
 [functions.delete-account]
 verify_jwt = false
+
+[functions.account-status]
+verify_jwt = false
+
+# Called by Google AdMob, which has no Supabase JWT. Authenticated instead by
+# Google's ECDSA signature on every callback.
+[functions.admob-rewarded]
+verify_jwt = false

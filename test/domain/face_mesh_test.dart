@@ -79,7 +79,7 @@ void main() {
   test('no landmarks, no mesh — never a fake face', () {
     expect(FaceMesh.fromGeometry(null).isEmpty, isTrue);
     expect(
-      FaceMesh.fromGeometry(const FaceGeometry(aspect: 1, contours: {})).isEmpty,
+      FaceMesh.fromGeometry(FaceGeometry(aspect: 1, contours: {})).isEmpty,
       isTrue,
     );
   });

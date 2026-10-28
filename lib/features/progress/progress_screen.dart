@@ -12,6 +12,7 @@ import '../../core/utils/dates.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models/scan.dart';
 import '../../domain/insights/insights_engine.dart';
+import 'progress_proof.dart';
 
 enum _View { trends, photos, insights }
 
@@ -331,6 +332,7 @@ class _TrendsState extends ConsumerState<_Trends> {
             ],
           ),
         ),
+        const ProgressProofSection(padding: EdgeInsets.only(top: Space.xl)),
         const SizedBox(height: Space.xl),
         const SectionHeader('Biggest changes'),
         _BiggestChanges(first: scans.first, last: scans.last),

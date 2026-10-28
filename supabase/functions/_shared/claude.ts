@@ -19,6 +19,12 @@ export function model(): string {
   return Deno.env.get("CLAUDE_MODEL") ?? "claude-opus-5-5";
 }
 
+/** Used when the primary model is overloaded or down (see ai.ts). Set
+ * CLAUDE_FALLBACK_MODEL to "" to disable. */
+export function fallbackModel(): string {
+  return Deno.env.get("CLAUDE_FALLBACK_MODEL") ?? "claude-sonnet-5-5";
+}
+
 /**
  * Server-side refusal fallback: if a safety classifier declines a request
  * (rare false positives on medical-adjacent photos), the API re-runs it on

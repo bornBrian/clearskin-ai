@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:purchases_flutter/purchases_flutter.dart' hide SubscriptionInfo;
 
 import '../core/config/env.dart';
+import '../domain/premium/renewal.dart';
 
 /// A purchasable plan, flattened from RevenueCat for the paywall UI.
 class Plan {
@@ -16,6 +17,7 @@ class Plan {
     required this.pricePerWeek,
     this.pricePerWeekString,
     this.trialDays,
+    this.prepaid = false,
   });
 
   final Package? package;
@@ -26,19 +28,57 @@ class Plan {
   final String? pricePerWeekString;
   final int? trialDays;
 
+  /// Google Play prepaid plan: pay once for the period, no auto-renewal.
+  /// Works with mobile money and carrier billing where cards are rare.
+  final bool prepaid;
+
   bool get isAnnual => package?.packageType == PackageType.annual;
 }
 
 enum PurchaseOutcome { success, cancelled, pending, failed }
 
+/// Why the paywall has no prices to show. Each has a different fix, so the
+/// paywall says which one it is instead of a generic "check your
+/// connection".
+enum PlansIssue {
+  /// No RevenueCat public key in this build (RC_ANDROID_KEY is empty).
+  notConfigured,
+
+  /// RevenueCat answered, but there's no current offering with packages:
+  /// products aren't created/attached in Play Console or RevenueCat yet.
+  noProducts,
+
+  /// Google Play Billing isn't available (no Play Store, signed-out Play
+  /// account, sideloaded build, or unsupported country).
+  storeUnavailable,
+
+  offline,
+}
+
+class PlansUnavailable implements Exception {
+  const PlansUnavailable(this.issue, [this.detail]);
+  final PlansIssue issue;
+  final String? detail;
+
+  @override
+  String toString() =>
+      'PlansUnavailable($issue${detail == null ? '' : ': $detail'})';
+}
+
 /// Wraps RevenueCat (Google Play Billing today, StoreKit when iOS ships).
-/// RevenueCat is the source of truth for entitlements; the Edge Functions
-/// re-verify with RevenueCat's REST API so Premium can't be faked client-side.
+///
+/// RevenueCat validates every purchase token with Google on its servers,
+/// so a patched app that fakes a purchase never gets a real entitlement.
+/// Entitlement responses are also signature-verified on the device
+/// (trusted entitlements), and the Edge Functions re-check Premium with
+/// RevenueCat's REST API before any paid AI call.
 class PurchasesService {
   PurchasesService();
 
   final _premium = StreamController<bool>.broadcast();
+  final _subscription = StreamController<SubscriptionInfo?>.broadcast();
   bool _isPremium = false;
+  SubscriptionInfo? _info;
   bool _configured = false;
 
   /// Debug-only override so Premium screens can be tested without a store.
@@ -47,12 +87,20 @@ class PurchasesService {
   bool get isPremium => _isPremium || (kDebugMode && devPremium);
   Stream<bool> get premiumChanges => _premium.stream;
 
+  /// The current or most recent Premium period, or null if never Premium.
+  SubscriptionInfo? get subscription => _info;
+  Stream<SubscriptionInfo?> get subscriptionChanges => _subscription.stream;
+
   Future<void> configure({String? appUserId}) async {
     if (!Env.hasPurchases || _configured) return;
     try {
       if (kDebugMode) await Purchases.setLogLevel(LogLevel.info);
       final config = PurchasesConfiguration(Env.revenueCatKey)
-        ..appUserID = appUserId;
+        ..appUserID = appUserId
+        // RevenueCat signs entitlement responses; a tampered response (MITM
+        // proxy, hooked network layer) is reported as failed below.
+        ..entitlementVerificationMode =
+            EntitlementVerificationMode.informational;
       await Purchases.configure(config);
       _configured = true;
       Purchases.addCustomerInfoUpdateListener(_onCustomerInfo);
@@ -83,14 +131,35 @@ class PurchasesService {
     }
   }
 
+  /// Plans to show on the paywall, cheapest per week first. Throws
+  /// [PlansUnavailable] with the specific reason when there are none.
   Future<List<Plan>> plans() async {
-    if (!_configured) return const [];
-    final offerings = await Purchases.getOfferings();
+    if (!Env.hasPurchases) {
+      throw const PlansUnavailable(PlansIssue.notConfigured);
+    }
+    if (!_configured) await configure();
+    if (!_configured) {
+      throw const PlansUnavailable(PlansIssue.storeUnavailable);
+    }
+    final Offerings offerings;
+    try {
+      offerings = await Purchases.getOfferings();
+    } on PlatformException catch (e) {
+      throw PlansUnavailable(switch (PurchasesErrorHelper.getErrorCode(e)) {
+        PurchasesErrorCode.networkError ||
+        PurchasesErrorCode.offlineConnectionError ||
+        PurchasesErrorCode.productRequestTimeout => PlansIssue.offline,
+        PurchasesErrorCode.configurationError ||
+        PurchasesErrorCode.invalidCredentialsError => PlansIssue.noProducts,
+        _ => PlansIssue.storeUnavailable,
+      }, e.message);
+    }
     final current = offerings.current;
-    if (current == null) return const [];
-    final plans = current.availablePackages.map(_toPlan).toList()
+    if (current == null || current.availablePackages.isEmpty) {
+      throw const PlansUnavailable(PlansIssue.noProducts);
+    }
+    return current.availablePackages.map(_toPlan).toList()
       ..sort((a, b) => a.pricePerWeek.compareTo(b.pricePerWeek));
-    return plans;
   }
 
   Future<PurchaseOutcome> purchase(Plan plan) async {
@@ -127,12 +196,28 @@ class PurchasesService {
   }
 
   void _onCustomerInfo(CustomerInfo info) {
-    final active =
-        info.entitlements.active[Env.premiumEntitlement]?.isActive ?? false;
-    if (active != _isPremium) {
-      _isPremium = active;
-    }
+    // Present in `all` even after it lapses, which is what lets us say
+    // "your Premium ended" instead of acting as if it never existed.
+    final ent = info.entitlements.all[Env.premiumEntitlement];
+    final tampered =
+        info.entitlements.verification == VerificationResult.failed ||
+        ent?.verification == VerificationResult.failed;
+    if (tampered) debugPrint('RevenueCat entitlement signature failed');
+
+    _isPremium = !tampered && (ent?.isActive ?? false);
+    _info = ent == null || tampered
+        ? null
+        : SubscriptionInfo(
+            active: ent.isActive,
+            expiresAt: DateTime.tryParse(ent.expirationDate ?? '')?.toLocal(),
+            willRenew: ent.willRenew && ent.periodType != PeriodType.prepaid,
+            billingIssue: ent.billingIssueDetectedAt != null,
+            isTrial: ent.periodType == PeriodType.trial,
+            productId: ent.productIdentifier,
+            managementUrl: info.managementURL,
+          );
     _premium.add(isPremium);
+    _subscription.add(_info);
   }
 
   Plan _toPlan(Package p) {
@@ -163,6 +248,7 @@ class PurchasesService {
       pricePerWeek: product.pricePerWeek ?? product.price / weeks,
       pricePerWeekString: product.pricePerWeekString,
       trialDays: _trialDays(product),
+      prepaid: product.defaultOption?.isPrepaid ?? false,
     );
   }
 
@@ -186,5 +272,8 @@ class PurchasesService {
     _ => value,
   };
 
-  void dispose() => _premium.close();
+  void dispose() {
+    _premium.close();
+    _subscription.close();
+  }
 }

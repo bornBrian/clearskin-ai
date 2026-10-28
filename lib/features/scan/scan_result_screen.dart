@@ -14,9 +14,13 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models/profile.dart';
 import '../../data/models/scan.dart';
+import '../../domain/guidance/potential.dart';
 import '../../domain/journey/journey_engine.dart';
 import '../../domain/scan/skin_maps.dart';
+import '../../domain/shop/shop_links.dart';
+import '../progress/progress_proof.dart';
 import '../share/share_card.dart';
+import '../shop/shop_link.dart';
 import 'face_map.dart';
 
 class ScanResultScreen extends ConsumerStatefulWidget {
@@ -89,8 +93,7 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
     // People here for glow see their glow first.
     final glowFirst =
         ref.watch(journeyProvider)?.track == JourneyTrack.glow ||
-        (ref.watch(profileProvider).value?.goals.contains(Goal.glow) ??
-            false);
+        (ref.watch(profileProvider).value?.goals.contains(Goal.glow) ?? false);
 
     return Scaffold(
       body: AnnotatedRegion<SystemUiOverlayStyle>(
@@ -112,120 +115,287 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children:
-                    [
-                          if (!a.usable) ...[
-                            Container(
-                              padding: const EdgeInsets.all(Space.md),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(Radii.md),
-                                border: Border.all(color: c.line),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Photo quality limited this scan',
-                                    style: context.text.titleSmall,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Retake in soft daylight. It won\'t count toward trends.',
-                                    style: context.text.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: Space.lg),
-                          ],
-                          if (a.redFlags.isNotEmpty) ...[
-                            _RedFlags(flags: a.redFlags),
-                            const SizedBox(height: Space.xl),
-                          ],
-                          if (a.priorities.isNotEmpty) ...[
-                            const Eyebrow('Your focus'),
-                            const SizedBox(height: Space.xs),
-                            for (var i = 0; i < a.priorities.length; i++)
-                              _Numbered(
-                                n: i + 1,
-                                text: a.priorities[i],
-                                last: i == a.priorities.length - 1,
-                              ),
-                            const SizedBox(height: Space.xl),
-                          ],
-                          FaceMap(
-                            scan: scan,
-                            initialLens: glowFirst ? SkinLens.radiance : null,
-                            previousRadiance: previous?.radiance,
-                            onRadiance: scan.radiance == null
-                                ? (r) => ref
-                                      .read(scansProvider.notifier)
-                                      .saveRadiance(scan.id, r)
-                                : null,
-                          ),
-                          const SizedBox(height: Space.xxl),
-                          const Eyebrow('Breakdown'),
-                          const SizedBox(height: Space.sm),
-                          _MetricGrid(
-                            metrics: a.weakest,
-                            previous: previous?.analysis,
-                          ),
-                          const SizedBox(height: Space.xs),
+                children: [
+                  // The AI disclaimer opens every report.
+                  Disclaimer(text: a.disclaimer),
+                  const SizedBox(height: Space.lg),
+                  if (!a.usable) ...[
+                    Container(
+                      padding: const EdgeInsets.all(Space.md),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(Radii.md),
+                        border: Border.all(color: c.line),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            'Out of 100, higher is better. Lowest first.',
-                            style: context.text.bodySmall?.copyWith(
-                              color: c.inkFaint,
-                            ),
+                            'Photo quality limited this scan',
+                            style: context.text.titleSmall,
                           ),
-                          if (a.strengths.isNotEmpty) ...[
-                            const SizedBox(height: Space.xxl),
-                            const Eyebrow('Going well'),
-                            const SizedBox(height: Space.sm),
-                            Text(
-                              _sentence(a.strengths),
-                              style: context.text.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w300,
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
-                          if (a.recommendedIngredients.isNotEmpty) ...[
-                            const SizedBox(height: Space.xxl),
-                            const Eyebrow('Reach for'),
-                            const SizedBox(height: Space.xxs),
-                            for (final (i, t)
-                                in a.recommendedIngredients.indexed)
-                              _IngredientLine(
-                                tip: t,
-                                last: i == a.recommendedIngredients.length - 1,
-                              ),
-                          ],
-                          if (a.ingredientsToAvoid.isNotEmpty) ...[
-                            const SizedBox(height: Space.xl),
-                            const Eyebrow('Skip for now'),
-                            const SizedBox(height: Space.xxs),
-                            for (final (i, t) in a.ingredientsToAvoid.indexed)
-                              _IngredientLine(
-                                tip: t,
-                                last: i == a.ingredientsToAvoid.length - 1,
-                              ),
-                          ],
-                          const SizedBox(height: Space.xxl),
-                          ArrowPill(
-                            label: 'See your updated routine',
-                            dark: true,
-                            onTap: () => context.go('/routine'),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Retake in soft daylight. It won\'t count toward trends.',
+                            style: context.text.bodySmall,
                           ),
-                          const SizedBox(height: Space.lg),
-                          const Disclaimer(),
-                        ]
-                        .animate(interval: 30.ms)
-                        .fadeIn(duration: Motion.normal),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: Space.lg),
+                  ],
+                  if (a.redFlags.isNotEmpty) ...[
+                    _RedFlags(flags: a.redFlags),
+                    const SizedBox(height: Space.xl),
+                  ],
+                  if (a.priorities.isNotEmpty) ...[
+                    Eyebrow(
+                      a.focus == null
+                          ? 'Your focus'
+                          : 'Your focus · ${a.focus!.label}',
+                    ),
+                    if (a.focus != null) ...[
+                      const SizedBox(height: 4),
+                      Text(a.focus!.line, style: context.text.bodyMedium),
+                    ],
+                    const SizedBox(height: Space.xs),
+                    for (var i = 0; i < a.priorities.length; i++)
+                      _Numbered(
+                        n: i + 1,
+                        text: a.priorities[i],
+                        last: i == a.priorities.length - 1,
+                      ),
+                    const SizedBox(height: Space.xl),
+                  ],
+                  FaceMap(
+                    scan: scan,
+                    initialLens: glowFirst ? SkinLens.radiance : null,
+                    previousRadiance: previous?.radiance,
+                    onRadiance: scan.radiance == null
+                        ? (r) => ref
+                              .read(scansProvider.notifier)
+                              .saveRadiance(scan.id, r)
+                        : null,
+                    onMeasure: scan.measure == null
+                        ? (m) => ref
+                              .read(scansProvider.notifier)
+                              .saveMeasure(scan.id, m)
+                        : null,
+                  ),
+                  const SizedBox(height: Space.xxl),
+                  const Eyebrow('Breakdown'),
+                  const SizedBox(height: Space.sm),
+                  _MetricGrid(metrics: a.weakest, previous: previous?.analysis),
+                  const SizedBox(height: Space.xs),
+                  Text(
+                    'Out of 100, higher is better. Lowest first.',
+                    style: context.text.bodySmall?.copyWith(color: c.inkFaint),
+                  ),
+                  // Measured proof belongs on the newest report only.
+                  if (scan.id == ref.watch(latestScanProvider)?.id)
+                    const ProgressProofSection(
+                      padding: EdgeInsets.only(top: Space.xxl),
+                    ),
+                  if (SkinPotential.of(a) case final p?) ...[
+                    const SizedBox(height: Space.xxl),
+                    _Potential(potential: p),
+                  ],
+                  if (a.strengths.isNotEmpty) ...[
+                    const SizedBox(height: Space.xxl),
+                    const Eyebrow('Going well'),
+                    const SizedBox(height: Space.sm),
+                    Text(
+                      _sentence(a.strengths),
+                      style: context.text.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w300,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                  if (a.recommendedIngredients.isNotEmpty) ...[
+                    const SizedBox(height: Space.xxl),
+                    const Eyebrow('Reach for'),
+                    const SizedBox(height: Space.xxs),
+                    for (final (i, t) in a.recommendedIngredients.indexed)
+                      _IngredientLine(
+                        tip: t,
+                        last: i == a.recommendedIngredients.length - 1,
+                      ),
+                  ],
+                  if (a.ingredientsToAvoid.isNotEmpty) ...[
+                    const SizedBox(height: Space.xl),
+                    const Eyebrow('Skip for now'),
+                    const SizedBox(height: Space.xxs),
+                    for (final (i, t) in a.ingredientsToAvoid.indexed)
+                      _IngredientLine(
+                        tip: t,
+                        last: i == a.ingredientsToAvoid.length - 1,
+                      ),
+                  ],
+                  if (a.ingredientWarnings.isNotEmpty) ...[
+                    const SizedBox(height: Space.xl),
+                    Eyebrow('Don\'t combine', color: c.warn),
+                    const SizedBox(height: Space.xxs),
+                    for (final (i, w) in a.ingredientWarnings.indexed)
+                      _Numbered(
+                        n: i + 1,
+                        text: w,
+                        last: i == a.ingredientWarnings.length - 1,
+                      ),
+                  ],
+                  if (a.routineAdjustments.isNotEmpty) ...[
+                    const SizedBox(height: Space.xxl),
+                    const Eyebrow('Change in your routine'),
+                    const SizedBox(height: Space.xxs),
+                    for (final (i, r) in a.routineAdjustments.indexed)
+                      _Numbered(
+                        n: i + 1,
+                        text: r,
+                        last: i == a.routineAdjustments.length - 1,
+                      ),
+                  ],
+                  if (a.recommendedProductTypes.isNotEmpty) ...[
+                    const SizedBox(height: Space.xxl),
+                    const Eyebrow('Worth adding'),
+                    const SizedBox(height: Space.xxs),
+                    for (final (i, t) in a.recommendedProductTypes.indexed)
+                      _ProductType(
+                        n: i + 1,
+                        type: t,
+                        last: i == a.recommendedProductTypes.length - 1,
+                      ),
+                  ],
+                  if (a.beyondProducts.isNotEmpty) ...[
+                    const SizedBox(height: Space.xxl),
+                    const Eyebrow('Beyond products'),
+                    const SizedBox(height: Space.xxs),
+                    for (final (i, t) in a.beyondProducts.indexed)
+                      _IngredientLine(
+                        tip: t,
+                        last: i == a.beyondProducts.length - 1,
+                      ),
+                  ],
+                  const SizedBox(height: Space.xxl),
+                  ArrowPill(
+                    label: 'See your updated routine',
+                    dark: true,
+                    onTap: () => context.go('/routine'),
+                  ),
+                ].animate(interval: 30.ms).fadeIn(duration: Motion.normal),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Where this skin can get in 12 weeks, and which measures carry it there.
+class _Potential extends StatelessWidget {
+  const _Potential({required this.potential});
+  final SkinPotential potential;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final gains = potential.biggestGains.take(3).toList();
+    final numeral = context.text.displayMedium?.copyWith(
+      fontWeight: FontWeight.w200,
+      height: 1,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Eyebrow('Your potential'),
+        const SizedBox(height: Space.sm),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              '${potential.now}',
+              style: numeral?.copyWith(color: c.inkMuted),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Space.sm),
+              child: Icon(Icons.arrow_forward_rounded, color: c.inkFaint),
+            ),
+            Text('${potential.potential}', style: numeral),
+            const SizedBox(width: Space.sm),
+            Expanded(
+              child: Text(
+                '+${potential.gain} in 12 weeks',
+                textAlign: TextAlign.right,
+                style: context.text.titleSmall?.copyWith(color: c.ink),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: Space.sm),
+        for (final (i, g) in gains.indexed)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: Space.sm),
+            decoration: BoxDecoration(
+              border: i == gains.length - 1
+                  ? null
+                  : Border(bottom: BorderSide(color: c.line)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(g.metric.label, style: context.text.bodyLarge),
+                ),
+                Text(
+                  '${g.now}  →  ${g.potential}',
+                  style: context.text.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const SizedBox(height: Space.xs),
+        Text(
+          'An estimate of what consistent care typically achieves, from your own scores. Most of the change shows by week 6.',
+          style: context.text.bodySmall?.copyWith(color: c.inkFaint),
+        ),
+      ],
+    );
+  }
+}
+
+/// A product type the scan suggests, with a regional shop link when one is
+/// configured, or just its name.
+class _ProductType extends ConsumerWidget {
+  const _ProductType({required this.n, required this.type, required this.last});
+  final int n;
+  final String type;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final query = ShopQuery.forType(type);
+    final hasShop =
+        ref
+            .watch(accountStatusProvider)
+            .value
+            ?.shop
+            .storeFor(ShopLinkRow.region) !=
+        null;
+    if (!hasShop) {
+      return _Numbered(
+        n: n,
+        text: query[0].toUpperCase() + query.substring(1),
+        last: last,
+      );
+    }
+    return Container(
+      decoration: BoxDecoration(
+        border: last
+            ? null
+            : Border(bottom: BorderSide(color: context.colors.line)),
+      ),
+      child: ShopLinkRow(query: query, source: 'scan'),
     );
   }
 }
@@ -394,8 +564,13 @@ class _Hero extends StatelessWidget {
                             ? 'Steady'
                             : '${delta > 0 ? '+' : '−'}${delta.abs()}',
                       ),
-                      if (type.isNotEmpty && type != 'unknown')
-                        ('Skin type', type[0].toUpperCase() + type.substring(1)),
+                      if (SkinPotential.of(a) case final p?)
+                        ('Potential', '${p.potential}')
+                      else if (type.isNotEmpty && type != 'unknown')
+                        (
+                          'Skin type',
+                          type[0].toUpperCase() + type.substring(1),
+                        ),
                       if (scan.radiance case final r?)
                         ('Radiance', '${r.score}')
                       else if (strongest != null)
@@ -423,7 +598,9 @@ class _FactStrip extends StatelessWidget {
     final rule = cream.withValues(alpha: 0.14);
     return Container(
       padding: const EdgeInsets.only(top: Space.md),
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: rule))),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: rule)),
+      ),
       child: IntrinsicHeight(
         child: Row(
           children: [
@@ -571,33 +748,39 @@ class _MetricCell extends StatelessWidget {
               style: context.text.labelMedium?.copyWith(color: c.inkMuted),
             ),
             const SizedBox(height: Space.xs),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${metric.score}',
-                  style: TextStyle(
-                    fontFamily: kFontFamily,
-                    fontSize: 38,
-                    height: 1,
-                    letterSpacing: -1,
-                    fontWeight: FontWeight.w200,
-                    color: c.ink,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-                if (diff != 0)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 3, top: 1),
-                    child: Text(
-                      '${diff > 0 ? '+' : '−'}${diff.abs()}',
-                      style: context.text.labelSmall?.copyWith(
-                        color: c.inkMuted,
-                        fontWeight: FontWeight.w500,
-                      ),
+            // Shrinks rather than overflows in narrow cells.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${metric.score}',
+                    style: TextStyle(
+                      fontFamily: kFontFamily,
+                      fontSize: 38,
+                      height: 1,
+                      letterSpacing: -1,
+                      fontWeight: FontWeight.w200,
+                      color: c.ink,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
-              ],
+                  if (diff != 0)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 3, top: 1),
+                      child: Text(
+                        '${diff > 0 ? '+' : '−'}${diff.abs()}',
+                        style: context.text.labelSmall?.copyWith(
+                          color: c.inkMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),

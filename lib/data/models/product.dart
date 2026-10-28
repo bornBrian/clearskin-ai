@@ -41,6 +41,8 @@ class Product {
     this.barcode,
     this.imageUrl,
     this.status = ProductStatus.active,
+    this.openedAt,
+    this.paoMonths,
   });
 
   final String id;
@@ -53,6 +55,11 @@ class Product {
   final String? barcode;
   final String? imageUrl;
   final ProductStatus status;
+
+  /// When it was opened, and how many months it stays good after (the
+  /// open-jar symbol on the pack). Both null until the person sets them.
+  final DateTime? openedAt;
+  final int? paoMonths;
 
   bool get usedAm => usage == ProductUsage.am || usage == ProductUsage.both;
   bool get usedPm =>
@@ -69,6 +76,8 @@ class Product {
     ProductUsage? usage,
     String? ingredientsRaw,
     ProductStatus? status,
+    DateTime? openedAt,
+    int? paoMonths,
   }) => Product(
     id: id,
     name: name ?? this.name,
@@ -80,6 +89,8 @@ class Product {
     barcode: barcode,
     imageUrl: imageUrl,
     status: status ?? this.status,
+    openedAt: openedAt ?? this.openedAt,
+    paoMonths: paoMonths ?? this.paoMonths,
   );
 
   Map<String, Object?> toRow() => {
@@ -93,6 +104,8 @@ class Product {
     'barcode': barcode,
     'image_url': imageUrl,
     'status': status.name,
+    'opened_at': openedAt?.millisecondsSinceEpoch,
+    'pao_months': paoMonths,
   };
 
   factory Product.fromRow(Map<String, Object?> r) => Product(
@@ -114,6 +127,11 @@ class Product {
     status:
         ProductStatus.values.where((s) => s.name == r['status']).firstOrNull ??
         ProductStatus.active,
+    openedAt: switch (r['opened_at']) {
+      final int ms => DateTime.fromMillisecondsSinceEpoch(ms),
+      _ => null,
+    },
+    paoMonths: r['pao_months'] as int?,
   );
 }
 

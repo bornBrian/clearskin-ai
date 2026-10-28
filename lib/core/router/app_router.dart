@@ -9,6 +9,7 @@ import '../../features/checkin/checkin_screen.dart';
 import '../../features/coach/coach_screen.dart';
 import '../../features/home/today_screen.dart';
 import '../../features/journey/journey_screen.dart';
+import '../../features/onboarding/medical_disclaimer_screen.dart';
 import '../../features/onboarding/onboarding_flow.dart';
 import '../../features/onboarding/plan_reveal_screen.dart';
 import '../../features/tips/tips_widgets.dart';
@@ -38,6 +39,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
   ref.listen(profileProvider, (_, _) => refresh.value++);
   ref.listen(accountProvider, (_, _) => refresh.value++);
+  ref.listen(disclaimerProvider, (_, _) => refresh.value++);
   ref.onDispose(refresh.dispose);
 
   return GoRouter(
@@ -47,14 +49,21 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final profile = ref.read(profileProvider);
       final account = ref.read(accountProvider);
+      final disclaimer = ref.read(disclaimerProvider);
       final atLoading = state.matchedLocation == '/loading';
-      if (profile.isLoading || account.isLoading) {
+      if (profile.isLoading || account.isLoading || disclaimer.isLoading) {
         return atLoading ? null : '/loading';
       }
+      // The medical disclaimer comes before everything, for new and
+      // existing users alike, and again whenever its wording changes.
+      final atDisclaimer = state.matchedLocation == '/disclaimer';
+      if (disclaimer.value != true) return atDisclaimer ? null : '/disclaimer';
       // The app belongs to an account: signed out, everyone starts at the
       // welcome screen. Their scans stay on the phone for when they're back.
       final onboarded = profile.value != null && account.value != null;
-      if (atLoading) return onboarded ? '/today' : '/onboarding';
+      if (atLoading || atDisclaimer) {
+        return onboarded ? '/today' : '/onboarding';
+      }
       final atOnboarding = state.matchedLocation == '/onboarding';
       // The plan reveal, account and paywall screens are part of onboarding.
       final atPaywall =
@@ -74,6 +83,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           backgroundColor: BrandColors.charcoal,
           body: Center(child: BrandMark(size: 112, color: BrandColors.cream)),
         ),
+      ),
+      GoRoute(
+        path: '/disclaimer',
+        builder: (_, _) => const MedicalDisclaimerScreen(),
       ),
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingFlow()),
       GoRoute(

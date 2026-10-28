@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -5,19 +7,26 @@ import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../data/models/profile.dart';
+import '../domain/premium/renewal.dart';
 import '../domain/routine/routine_engine.dart';
 
-/// Local reminders and alerts. Two Android channels so people can silence
-/// smart alerts without losing their routine reminders.
+/// Local reminders and alerts, one Android channel (and sound) per kind so
+/// people can silence any of them on its own.
 ///
 /// Scheduled:
 ///  - morning routine (daily) and evening routine (per weekday, so the copy
-///    can say "retinoid night" or "rest night")
+///    can say "retinoid night" or "rest night"), skipped for today once
+///    that routine is done
 ///  - daily check-in and weekly scan, at the times the person picked
 ///  - smart alerts, re-planned on every app open and routine change:
 ///    streak at risk tonight, high UV at lunchtime, come-back after 3 and 7
 ///    quiet days
 ///  - the honest trial-ending reminder
+///  - Premium renewal reminders (a week and a day before a cancelled or
+///    prepaid plan ends, or when the person asked to be reminded)
+///
+/// Every notification carries the route it should open as its payload, so
+/// tapping "Morning, Sam" lands on the morning checklist, not the home tab.
 ///
 /// Inexact scheduling on Android, so no exact-alarm permission is needed
 /// (Play restricts that permission to alarm apps).
@@ -35,27 +44,97 @@ class NotificationService {
   static const _streakId = 302;
   static const _sunId = 303;
   static const _trialId = 200;
+  static const _renewalBaseId = 210; // +0..4
+  static const _milestoneBaseId = 310; // +0..2
+  static const _expiryBaseId = 400; // +0..19
 
-  static const _routine = NotificationDetails(
+  final _taps = StreamController<String>.broadcast();
+
+  /// Routes from notifications tapped while the app is running.
+  Stream<String> get taps => _taps.stream;
+
+  /// The route of the notification that launched the app, if any. Read once.
+  Future<String?> takeLaunchRoute() async {
+    await init();
+    final details = await _plugin.getNotificationAppLaunchDetails();
+    if (details?.didNotificationLaunchApp != true) return null;
+    return _route(details!.notificationResponse?.payload);
+  }
+
+  /// Only in-app routes are accepted from a payload.
+  static String? _route(String? payload) =>
+      payload != null && payload.startsWith('/') ? payload : null;
+
+  /// One channel per sound, like fitness apps: people learn what a sound
+  /// means before they look, and can mute each kind separately in Android
+  /// settings. Sounds come from scripts/brand/generate_sounds.py. Android
+  /// fixes a channel's sound when it's first created, so changing a sound
+  /// means a new channel id; old ids go in [_retiredChannels].
+  static NotificationDetails _channel(
+    String id,
+    String name,
+    String description,
+    String sound,
+  ) => NotificationDetails(
     android: AndroidNotificationDetails(
-      'routine_reminders',
-      'Routine reminders',
-      channelDescription: 'Morning, evening, check-in and weekly scan',
+      id,
+      name,
+      channelDescription: description,
       importance: Importance.defaultImportance,
       priority: Priority.defaultPriority,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound(sound),
     ),
-    iOS: DarwinNotificationDetails(),
+    // iOS falls back to the default sound if the file isn't in the bundle.
+    iOS: DarwinNotificationDetails(sound: '$sound.wav'),
   );
-  static const _smart = NotificationDetails(
-    android: AndroidNotificationDetails(
-      'smart_alerts',
-      'Smart alerts',
-      channelDescription: 'Streaks, UV and gentle come-back reminders',
-      importance: Importance.low,
-      priority: Priority.low,
-    ),
-    iOS: DarwinNotificationDetails(),
+
+  /// Three bright rising notes.
+  static final _morning = _channel(
+    'morning_v1',
+    'Morning routine',
+    'Your morning routine reminder',
+    'clearskin_morning',
   );
+
+  /// Two soft falling notes, quieter.
+  static final _evening = _channel(
+    'evening_v1',
+    'Evening routine',
+    'Your evening routine and daily check-in',
+    'clearskin_evening',
+  );
+
+  /// "Da-da-ding": noticeable, never an alarm.
+  static final _streak = _channel(
+    'streak_v1',
+    'Streak alerts',
+    'When your streak is about to end',
+    'clearskin_streak',
+  );
+
+  /// A rising run with a sparkle.
+  static final _milestone = _channel(
+    'milestones_v1',
+    'Milestones',
+    'Day 30, 60 and 90 progress moments',
+    'clearskin_milestone',
+  );
+
+  /// The neutral two-note chime for everything else.
+  static final _general = _channel(
+    'updates_v1',
+    'Tips & updates',
+    'Scan day, sun alerts, product expiry and Premium',
+    'clearskin_chime',
+  );
+
+  static const _retiredChannels = [
+    'routine_reminders',
+    'smart_alerts',
+    'routine_reminders_v2',
+    'smart_alerts_v2',
+  ];
 
   Future<void> init() async {
     if (_ready) return;
@@ -68,14 +147,29 @@ class NotificationService {
     }
     await _plugin.initialize(
       settings: const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        android: AndroidInitializationSettings('@drawable/ic_stat_clearskin'),
         iOS: DarwinInitializationSettings(
           requestAlertPermission: false,
           requestBadgePermission: false,
           requestSoundPermission: false,
         ),
       ),
+      onDidReceiveNotificationResponse: (r) {
+        final route = _route(r.payload);
+        if (route != null) _taps.add(route);
+      },
     );
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    for (final id in _retiredChannels) {
+      try {
+        await android?.deleteNotificationChannel(channelId: id);
+      } catch (_) {
+        // Never existed on this install.
+      }
+    }
     _ready = true;
   }
 
@@ -106,10 +200,35 @@ class NotificationService {
     return false;
   }
 
+  Future<void> _routineQueue = Future.value();
+
   /// (Re)schedules every recurring reminder from the profile's settings.
+  /// A reminder for something already done today starts tomorrow instead:
+  /// nobody wants "Morning routine" after they've finished it. Calls are
+  /// queued so overlapping re-plans can't leave a stale one behind.
   Future<void> scheduleRoutineReminders(
     UserProfile profile, {
     Routine? routine,
+    bool amDoneToday = false,
+    bool pmDoneToday = false,
+    bool checkedInToday = false,
+  }) => _routineQueue = _routineQueue.then(
+    (_) => _scheduleRoutineReminders(
+      profile,
+      routine: routine,
+      amDoneToday: amDoneToday,
+      pmDoneToday: pmDoneToday,
+      checkedInToday: checkedInToday,
+    ),
+    onError: (_) {},
+  );
+
+  Future<void> _scheduleRoutineReminders(
+    UserProfile profile, {
+    Routine? routine,
+    required bool amDoneToday,
+    required bool pmDoneToday,
+    required bool checkedInToday,
   }) async {
     await init();
     for (final id in [
@@ -130,6 +249,9 @@ class NotificationService {
         profile.amReminder,
         name.isEmpty ? 'Morning routine' : 'Morning, $name',
         'Two minutes. Finish with SPF.',
+        details: _morning,
+        skipToday: amDoneToday,
+        payload: '/routine?slot=am',
       );
       for (var weekday = 1; weekday <= 7; weekday++) {
         final (title, body) = eveningCopy(routine, weekday);
@@ -139,6 +261,9 @@ class NotificationService {
           title,
           body,
           weekday: weekday,
+          details: _evening,
+          skipToday: pmDoneToday,
+          payload: '/routine?slot=pm',
         );
       }
     }
@@ -148,6 +273,9 @@ class NotificationService {
         r.checkInTime,
         'How was your skin today?',
         'Ten seconds. It helps find your triggers.',
+        details: _evening,
+        skipToday: checkedInToday,
+        payload: '/checkin',
       );
     }
     if (r.weeklyScan) {
@@ -157,6 +285,8 @@ class NotificationService {
         'Scan day',
         'Same light, same angle. See this week\'s change.',
         weekday: r.scanWeekday,
+        details: _general,
+        payload: '/scan',
       );
     }
   }
@@ -205,12 +335,14 @@ class NotificationService {
       dayAt(3, pm.hour, pm.minute),
       'Your plan is waiting',
       'Pick up with tonight\'s routine. No catching up needed.',
+      payload: '/routine?slot=pm',
     );
     await _once(
       _comebackLongId,
       dayAt(7, 10, 0),
       'A fresh start for your skin',
       'One quick scan shows where you are now.',
+      payload: '/scan',
     );
 
     // Streak at risk: 75 minutes after the evening reminder.
@@ -222,6 +354,8 @@ class NotificationService {
           dayAt(0, mins ~/ 60, mins % 60),
           'Keep your $streak-day streak',
           'Your evening routine takes two minutes.',
+          details: _streak,
+          payload: '/routine?slot=pm',
         );
       }
     }
@@ -247,8 +381,69 @@ class NotificationService {
       at,
       'Your free trial ends tomorrow',
       'No surprises: if ClearSkin isn\'t for you, cancel anytime in Google Play → Subscriptions.',
-      details: _routine,
+      details: _general,
     );
+  }
+
+  /// Two weeks before each opened product passes its use-by date.
+  Future<void> scheduleExpiryReminders(
+    List<(String name, DateTime useBy)> products,
+  ) async {
+    await init();
+    for (var i = 0; i < 20; i++) {
+      await _plugin.cancel(id: _expiryBaseId + i);
+    }
+    for (final (i, (name, useBy)) in products.take(20).indexed) {
+      final at = useBy.subtract(const Duration(days: 14));
+      await _once(
+        _expiryBaseId + i,
+        tz.TZDateTime(tz.local, at.year, at.month, at.day, 10),
+        '$name expires in 2 weeks',
+        'Opened products lose strength. Time to plan a replacement.',
+        details: _general,
+        payload: '/shelf',
+      );
+    }
+  }
+
+  /// Day 30, 60 and 90 since the first scan: the moments a re-scan shows
+  /// real, measurable change. Safe to call often.
+  Future<void> scheduleMilestones(DateTime? firstScanAt) async {
+    await init();
+    const days = [30, 60, 90];
+    for (var i = 0; i < days.length; i++) {
+      await _plugin.cancel(id: _milestoneBaseId + i);
+    }
+    if (firstScanAt == null) return;
+    for (final (i, d) in days.indexed) {
+      final day = firstScanAt.add(Duration(days: d));
+      await _once(
+        _milestoneBaseId + i,
+        tz.TZDateTime(tz.local, day.year, day.month, day.day, 10),
+        '$d days since your first scan',
+        'Scan today to see exactly what changed since day 1.',
+        details: _milestone,
+        payload: '/scan',
+      );
+    }
+  }
+
+  /// Replaces the renewal reminders with [plan]'s. Safe to call often.
+  Future<void> scheduleRenewalReminders(List<RenewalReminder> plan) async {
+    await init();
+    for (var i = 0; i < 5; i++) {
+      await _plugin.cancel(id: _renewalBaseId + i);
+    }
+    for (final (i, r) in plan.take(5).indexed) {
+      await _once(
+        _renewalBaseId + i,
+        tz.TZDateTime.from(r.at, tz.local),
+        r.title,
+        r.body,
+        details: _general,
+        payload: '/paywall?source=renewal',
+      );
+    }
   }
 
   Future<void> cancelAll() async {
@@ -261,17 +456,46 @@ class NotificationService {
     tz.TZDateTime at,
     String title,
     String body, {
-    NotificationDetails details = _smart,
+    NotificationDetails? details,
+    String? payload,
   }) async {
     if (!at.isAfter(tz.TZDateTime.now(tz.local))) return;
     await _plugin.zonedSchedule(
       id: id,
       scheduledDate: at,
-      notificationDetails: details,
+      notificationDetails: details ?? _general,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       title: title,
       body: body,
+      payload: payload,
     );
+  }
+
+  /// When a reminder at [hour]:[minute] (daily, or weekly on [weekday])
+  /// should first fire. With [skipToday], today's is left out; the repeat
+  /// carries on from the next one. Calendar days, so DST can't shift it.
+  @visibleForTesting
+  static DateTime firstFire(
+    DateTime now,
+    int hour,
+    int minute, {
+    int? weekday,
+    bool skipToday = false,
+  }) {
+    var day = DateTime(now.year, now.month, now.day);
+    if (weekday != null) {
+      day = DateTime(
+        day.year,
+        day.month,
+        day.day + (weekday - day.weekday) % 7,
+      );
+    }
+    final at = DateTime(day.year, day.month, day.day, hour, minute);
+    final isToday =
+        day.year == now.year && day.month == now.month && day.day == now.day;
+    if (at.isAfter(now) && !(skipToday && isToday)) return at;
+    final step = weekday == null ? 1 : 7;
+    return DateTime(day.year, day.month, day.day + step, hour, minute);
   }
 
   /// Daily at [t], or weekly on [weekday] at [t].
@@ -280,33 +504,38 @@ class NotificationService {
     ReminderTime t,
     String title,
     String body, {
+    required NotificationDetails details,
     int? weekday,
+    bool skipToday = false,
+    String? payload,
   }) async {
-    final now = tz.TZDateTime.now(tz.local);
-    var at = tz.TZDateTime(
-      tz.local,
-      now.year,
-      now.month,
-      now.day,
+    // Wall-clock components in the reminder's zone, compared as such.
+    final n = tz.TZDateTime.now(tz.local);
+    final first = firstFire(
+      DateTime(n.year, n.month, n.day, n.hour, n.minute, n.second),
       t.hour,
       t.minute,
+      weekday: weekday,
+      skipToday: skipToday,
     );
-    if (weekday != null) {
-      at = at.add(Duration(days: (weekday - at.weekday) % 7));
-    }
-    if (!at.isAfter(now)) {
-      at = at.add(Duration(days: weekday == null ? 1 : 7));
-    }
     await _plugin.zonedSchedule(
       id: id,
-      scheduledDate: at,
-      notificationDetails: _routine,
+      scheduledDate: tz.TZDateTime(
+        tz.local,
+        first.year,
+        first.month,
+        first.day,
+        first.hour,
+        first.minute,
+      ),
+      notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: weekday == null
           ? DateTimeComponents.time
           : DateTimeComponents.dayOfWeekAndTime,
       title: title,
       body: body,
+      payload: payload,
     );
   }
 }

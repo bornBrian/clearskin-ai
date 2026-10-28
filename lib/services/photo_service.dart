@@ -10,17 +10,24 @@ import 'package:path_provider/path_provider.dart';
 
 import '../domain/scan/capture_quality.dart';
 import '../domain/scan/face_zones.dart';
+import '../domain/scan/live_guidance.dart';
 import '../domain/scan/skin_maps.dart';
 
 class ProcessedPhoto {
   const ProcessedPhoto({
     required this.jpeg,
+    required this.aiJpeg,
     required this.width,
     required this.height,
     required this.tempPath,
   });
 
+  /// Kept on the phone for the face map, lenses and before/after.
   final Uint8List jpeg;
+
+  /// What's sent for analysis: ≤1024 px, ~150 KB. Image tokens scale with
+  /// pixel area, so this is about a third of the cost of the full photo.
+  final Uint8List aiJpeg;
   final int width;
   final int height;
   final String tempPath;
@@ -67,7 +74,17 @@ class PhotoService {
   /// upload ~250 KB and AI image-token cost predictable.
   static const maxEdge = 1280;
 
-  Future<CaptureCheck> process(String sourcePath, {bool mirror = false}) async {
+  /// The AI copy's long edge and size target.
+  static const aiEdge = 1024;
+  static const aiTargetBytes = 160 * 1024;
+
+  /// [pose] relaxes the straight-on checks (turn, centring, side light)
+  /// for the side photos, which are meant to be turned.
+  Future<CaptureCheck> process(
+    String sourcePath, {
+    bool mirror = false,
+    ScanPose pose = ScanPose.front,
+  }) async {
     final bytes = await File(sourcePath).readAsBytes();
     final out = await compute(_normalize, _NormalizeArgs(bytes, mirror));
     if (out == null) {
@@ -81,6 +98,7 @@ class PhotoService {
     await File(tempPath).writeAsBytes(out.jpeg, flush: true);
     final photo = ProcessedPhoto(
       jpeg: out.jpeg,
+      aiJpeg: out.aiJpeg,
       width: out.width,
       height: out.height,
       tempPath: tempPath,
@@ -120,15 +138,16 @@ class PhotoService {
       meanLuminance: stats.mean,
       shadowClipFraction: stats.shadowClip,
       highlightClipFraction: stats.highlightClip,
-      sideBalance: stats.sideBalance,
+      // Side photos are lit from one side by design.
+      sideBalance: pose.isSide ? 1 : stats.sideBalance,
       sharpness: stats.sharpness,
       faceWidthFraction: face == null
           ? null
           : face.boundingBox.width / out.width,
-      faceCenterOffset: face == null
+      faceCenterOffset: face == null || pose.isSide
           ? null
           : (face.boundingBox.center.dx - out.width / 2).abs() / out.width,
-      headYaw: face?.headEulerAngleY,
+      headYaw: pose.isSide ? null : face?.headEulerAngleY,
       headRoll: face?.headEulerAngleZ,
       headPitch: face?.headEulerAngleX,
       cutOff:
@@ -137,6 +156,9 @@ class PhotoService {
               face.boundingBox.top < out.height * 0.005 ||
               face.boundingBox.right > out.width * 0.99 ||
               face.boundingBox.bottom > out.height * 0.995),
+      headroom: face == null || pose.isSide || face.boundingBox.height <= 0
+          ? null
+          : face.boundingBox.top / face.boundingBox.height,
       eyesOpen: switch ((
         face?.leftEyeOpenProbability,
         face?.rightEyeOpenProbability,
@@ -215,8 +237,9 @@ class _NormalizeArgs {
 }
 
 class _NormalizeResult {
-  const _NormalizeResult(this.jpeg, this.width, this.height);
+  const _NormalizeResult(this.jpeg, this.aiJpeg, this.width, this.height);
   final Uint8List jpeg;
+  final Uint8List aiJpeg;
   final int width;
   final int height;
 }
@@ -243,7 +266,33 @@ _NormalizeResult? _normalize(_NormalizeArgs a) {
   // Strip EXIF (location, device) — privacy by default.
   image.exif = img.ExifData();
   final jpeg = img.encodeJpg(image, quality: 88);
-  return _NormalizeResult(jpeg, image.width, image.height);
+  return _NormalizeResult(jpeg, _aiCopy(image), image.width, image.height);
+}
+
+/// ≤1024 px on the long edge, then the highest JPEG quality that fits the
+/// ~150 KB target (never below 60, where skin texture starts to smear).
+Uint8List _aiCopy(img.Image image) {
+  var small = image;
+  if (math.max(image.width, image.height) > PhotoService.aiEdge) {
+    small = image.width >= image.height
+        ? img.copyResize(
+            image,
+            width: PhotoService.aiEdge,
+            interpolation: img.Interpolation.average,
+          )
+        : img.copyResize(
+            image,
+            height: PhotoService.aiEdge,
+            interpolation: img.Interpolation.average,
+          );
+  }
+  var quality = 85;
+  var out = img.encodeJpg(small, quality: quality);
+  while (out.length > PhotoService.aiTargetBytes && quality > 60) {
+    quality -= 5;
+    out = img.encodeJpg(small, quality: quality);
+  }
+  return out;
 }
 
 class _MeasureArgs {

@@ -8,6 +8,7 @@ import 'package:image/image.dart' as img;
 
 import '../../domain/scan/face_zones.dart';
 import '../../domain/scan/skin_maps.dart';
+import '../../domain/scan/skin_measure.dart';
 
 /// Overlay colour per lens: one hue each, never a rainbow heatmap.
 const lensColors = <SkinLens, ui.Color>{
@@ -54,6 +55,22 @@ abstract final class SkinLensStore {
     } catch (e) {
       debugPrint('Skin lens analysis failed: $e');
       return _remember(path, null);
+    }
+  }
+
+  /// Just the numbers, without building overlays: for measuring older
+  /// scans in the background (progress proof).
+  static Future<SkinMeasure?> measure(String path, FaceGeometry g) async {
+    final done = _done[path];
+    if (done != null) return SkinMeasure.of(done.maps);
+    try {
+      return await Isolate.run(() {
+        final maps = _measure(path, g);
+        return maps == null ? null : SkinMeasure.of(maps);
+      });
+    } catch (e) {
+      debugPrint('Skin measurement failed: $e');
+      return null;
     }
   }
 
