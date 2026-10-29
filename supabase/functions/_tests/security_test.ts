@@ -586,8 +586,15 @@ Deno.test("SSV: unknown key, junk signature, stale or odd params are refused", a
   );
   assertEquals((await rewarded(junk)).status, 400);
   assertEquals((await rewarded(await ssv(reward("tx-old", Date.now() - 3 * 3600_000)))).status, 400);
-  assertEquals((await rewarded(await ssv({ ...reward("tx-u"), user_id: "' or 1=1 --" }))).status, 400);
   assertEquals((await rewarded(new Request("https://x/functions/v1/admob-rewarded", { method: "POST" }))).status, 405);
+});
+
+Deno.test("SSV: a signed callback for no account is acknowledged, crediting nothing", async () => {
+  restCalls.length = 0;
+  // The AdMob console's "verify URL" test sends no user id.
+  assertEquals((await rewarded(await ssv({ ...reward("tx-console"), user_id: "" }))).status, 200);
+  assertEquals((await rewarded(await ssv({ ...reward("tx-u"), user_id: "' or 1=1 --" }))).status, 200);
+  assert(!restCalls.some((c) => c.path.includes("scan_credits")), "credit minted without an account");
 });
 
 // ── IDOR: another user's id in the request is never used ────────────────

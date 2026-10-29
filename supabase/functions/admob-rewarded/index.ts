@@ -77,7 +77,10 @@ Deno.serve(async (req) => {
     const userId = params.get("user_id") ?? "";
     const transactionId = params.get("transaction_id") ?? "";
     const timestamp = Number(params.get("timestamp"));
-    if (!UUID.test(userId) || !transactionId || transactionId.length > 200) {
+    // Genuine but for no account: the console's "verify URL" test sends no
+    // user id. Acknowledge it (or AdMob won't save the URL); credit nothing.
+    if (!UUID.test(userId)) return ok();
+    if (!transactionId || transactionId.length > 200) {
       return new Response("bad params", { status: 400 });
     }
     if (!Number.isFinite(timestamp) || Date.now() - timestamp > MAX_AGE_MS) {
