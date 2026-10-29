@@ -694,10 +694,10 @@ abstract final class Photos {
   static const _dir = 'assets/images/photos';
 
   /// The only portraits in the app, on the sign-in screen. Different skin
-  /// tones; the screen shows one at a time, taking turns.
+  /// tones; they slide from one to the next, in this order.
   static const auth = '$_dir/auth.webp';
   static const auth2 = '$_dir/auth_2.webp';
-  static const authPortraits = [auth, auth2];
+  static const authPortraits = [auth2, auth];
 
   static const sageWaves = '$_dir/sage_waves.webp';
   static const leafShadow = '$_dir/leaf_shadow.webp';

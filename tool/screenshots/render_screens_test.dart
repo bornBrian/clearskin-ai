@@ -520,12 +520,8 @@ Future<void> _warmSamplePhoto(WidgetTester tester) async {
 /// overflow fails the test. The stress pass testers do by hand.
 final _qa = Platform.environment['QA'];
 
-Future<void> _shot(
-  WidgetTester tester,
-  Widget app,
-  String name, {
-  DateTime? at,
-}) => withClock(Clock.fixed(at ?? _now), () => _shotNow(tester, app, name));
+Future<void> _shot(WidgetTester tester, Widget app, String name) =>
+    withClock(Clock.fixed(_now), () => _shotNow(tester, app, name));
 
 Future<void> _shotNow(WidgetTester tester, Widget app, String name) async {
   if (_qa == 'small') {
@@ -868,8 +864,6 @@ void main() {
         profile: null,
       ),
       '13b-create-account',
-      // A second later: the sign-in screen's other portrait.
-      at: _now.add(const Duration(seconds: 1)),
     );
   });
 

@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -39,11 +39,6 @@ class AuthScreen extends ConsumerStatefulWidget {
 class _AuthScreenState extends ConsumerState<AuthScreen> {
   bool _busy = false;
   String? _busyProvider;
-
-  /// Which portrait this visit shows: they take turns, so no one face
-  /// stands for everyone.
-  late final String _portrait =
-      Photos.authPortraits[clock.now().second % Photos.authPortraits.length];
 
   Future<void> _done(Account a) async {
     // Skin photos and results are personal. If this phone holds someone
@@ -140,13 +135,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               right: 0,
               top: 0,
               height: size.height * 0.62,
-              child: PhotoFill(
-                _portrait,
-                alignment: Alignment(0, -0.2),
-                scrim: 1,
-                scrimStart: 0.45,
-                scrimColor: BrandColors.charcoal,
-              ).animate().fadeIn(duration: 700.ms),
+              child: const _Portraits().animate().fadeIn(duration: 700.ms),
             ),
             // Blend the photo into the charcoal sheet.
             Positioned(
@@ -556,4 +545,68 @@ class _GPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_GPainter old) => false;
+}
+
+/// The sign-in portraits, different skin tones: they slide from one to the
+/// next on their own and can be swiped either way. No one face stands for
+/// everyone.
+class _Portraits extends StatefulWidget {
+  const _Portraits();
+
+  @override
+  State<_Portraits> createState() => _PortraitsState();
+}
+
+class _PortraitsState extends State<_Portraits> {
+  static const _every = Duration(seconds: 4);
+  static const _photos = Photos.authPortraits;
+
+  // Far from the ends, so swiping back from the first photo works too.
+  final _page = PageController(initialPage: 1000 * _photos.length);
+  Timer? _timer;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _restart();
+  }
+
+  void _restart() {
+    _timer?.cancel();
+    if (MediaQuery.disableAnimationsOf(context)) return;
+    _timer = Timer.periodic(_every, (_) {
+      if (_page.hasClients) {
+        _page.nextPage(
+          duration: const Duration(milliseconds: 900),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _page.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      // Holding or swiping pauses the slideshow; letting go restarts it.
+      onPointerDown: (_) => _timer?.cancel(),
+      onPointerUp: (_) => _restart(),
+      child: PageView.builder(
+        controller: _page,
+        itemBuilder: (_, i) => PhotoFill(
+          _photos[i % _photos.length],
+          alignment: const Alignment(0, -0.2),
+          scrim: 1,
+          scrimStart: 0.45,
+          scrimColor: BrandColors.charcoal,
+        ),
+      ),
+    );
+  }
 }

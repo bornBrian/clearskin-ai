@@ -38,7 +38,17 @@ final routerProvider = Provider<GoRouter>((ref) {
   // person signs in or out.
   final refresh = ValueNotifier<int>(0);
   ref.listen(profileProvider, (_, _) => refresh.value++);
-  ref.listen(accountProvider, (_, _) => refresh.value++);
+  ref.listen(accountProvider, (prev, next) {
+    // Signing in happens on top of setup and needs no redirect. Refreshing
+    // then would rebuild the sign-in page while it finishes, so it never
+    // closes and the person lands on "Continue with" again.
+    final signedIn =
+        prev != null &&
+        !prev.isLoading &&
+        prev.value == null &&
+        next.value != null;
+    if (!signedIn) refresh.value++;
+  });
   ref.listen(disclaimerProvider, (_, _) => refresh.value++);
   ref.onDispose(refresh.dispose);
 
