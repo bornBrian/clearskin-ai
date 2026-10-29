@@ -1,0 +1,41 @@
+{
+  "bpm": 110,
+  "beats": 35,
+  "tail": 3,
+  "bars": ["Em", "Em", "C", "D", "Em", "C", "G", "D", "G"],
+  "sections": [
+    { "from": 0, "to": 2, "pad": 0.6, "cutoff": [260, 650] },
+    { "from": 2, "to": 4, "pad": 0.7, "cutoff": [500, 700] },
+    { "from": 4, "to": 12, "pad": 0.75, "pluck": 0.6, "bass": 0.5, "hat": 0.5, "cutoff": [800, 1900] },
+    { "from": 12, "to": 14, "pad": 0.7, "pluck": 0.4, "cutoff": [1900, 380] },
+    { "from": 14, "to": 24, "pad": 0.8, "pluck": 0.7, "bass": 0.9, "kick": 1, "hat": 0.8, "clap": 0.8, "cutoff": [2400, 3400] },
+    { "from": 24, "to": 28, "pad": 0.9, "pluck": 0.7, "bass": 0.4, "cutoff": [2200, 1400] },
+    { "from": 28, "to": 35, "pad": 0.8, "pluck": 0.3, "cutoff": [1600, 450] }
+  ],
+  "gaps": [[13.6, 14]],
+  "cues": [
+    { "beat": 1.3, "sfx": "whoosh", "seconds": 1.3, "gain": -6, "pan": [-0.8, 0.8] },
+    { "beat": 1.3, "sfx": "whoosh", "seconds": 1.3, "gain": -6, "pan": [0.8, -0.8] },
+    { "beat": 2, "sfx": "impact", "gain": 0 },
+    { "beat": 2, "sfx": "glitch", "gain": -5 },
+    { "beat": 2, "sfx": "sub", "gain": -4 },
+    { "beat": 4, "sfx": "whoosh", "seconds": 0.5, "gain": -7 },
+    { "beat": 5, "sfx": "buzz", "gain": -6 },
+    { "beat": 6, "sfx": "whoosh", "seconds": 0.5, "gain": -7, "pan": [0.7, -0.7] },
+    { "beat": 7, "sfx": "tick", "gain": -4 },
+    { "beat": 8, "sfx": "whoosh", "seconds": 0.5, "gain": -7 },
+    { "beat": 9, "sfx": "ding", "gain": -5 },
+    { "beat": 10, "sfx": "whoosh", "seconds": 0.5, "gain": -7, "pan": [0.7, -0.7] },
+    { "beat": 11, "sfx": "buzz", "gain": -6 },
+    { "beat": 14, "sfx": "riser", "seconds": 1.6, "gain": -6 },
+    { "beat": 14, "sfx": "impact", "gain": -1 },
+    { "beat": 14, "sfx": "sub", "gain": -4 },
+    { "beat": 18, "sfx": "pop", "gain": -5 },
+    { "beat": 18, "sfx": "buzz", "gain": -12 },
+    { "beat": 21, "sfx": "tick", "gain": -5 },
+    { "beat": 24, "sfx": "swell", "seconds": 1.0, "gain": -7 },
+    { "beat": 24, "sfx": "hit", "gain": -6 },
+    { "beat": 28, "sfx": "impact", "big": 0.7, "gain": -4 },
+    { "beat": 29, "sfx": "shimmer", "gain": -7 }
+  ]
+}

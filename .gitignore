@@ -71,3 +71,7 @@ screens/
 .github/modernize/
 .claude/
 *.code-workspace
+
+# Motion ads: dependencies and the copied/resized inputs (see tool/ads/motion)
+tool/ads/motion/node_modules/
+tool/ads/motion/public/

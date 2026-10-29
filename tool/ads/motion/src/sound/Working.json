@@ -1,0 +1,38 @@
+{
+  "bpm": 92,
+  "beats": 34,
+  "tail": 3,
+  "bars": ["Dm", "Dm", "Bb", "C", "F", "C", "Dm", "Bb", "F"],
+  "sections": [
+    { "from": 0, "to": 4, "pad": 0.6, "pluck": 0.3, "cutoff": [300, 700] },
+    { "from": 4, "to": 8, "pad": 0.7, "pluck": 0.5, "hat": 0.35, "cutoff": [700, 1300] },
+    { "from": 8, "to": 12, "pad": 0.7, "pluck": 0.3, "cutoff": [1300, 350] },
+    { "from": 12, "to": 20, "pad": 0.8, "pluck": 0.7, "bass": 0.9, "kick": 1, "hat": 0.8, "clap": 0.8, "cutoff": [2200, 3400] },
+    { "from": 20, "to": 26, "pad": 0.85, "pluck": 0.7, "bass": 0.6, "kick": 0.7, "hat": 0.5, "cutoff": [2600, 1800] },
+    { "from": 26, "to": 34, "pad": 0.8, "pluck": 0.3, "cutoff": [1600, 450] }
+  ],
+  "gaps": [[11.6, 12]],
+  "cues": [
+    { "beat": 0, "sfx": "hit", "gain": -6 },
+    { "beat": 1.2, "sfx": "whoosh", "seconds": 1.2, "gain": -9 },
+    { "beat": 4, "sfx": "whoosh", "seconds": 0.6, "gain": -7 },
+    { "beat": 4.5, "sfx": "pop", "gain": -6 },
+    { "beat": 5.5, "sfx": "pop", "gain": -6 },
+    { "beat": 6.5, "sfx": "pop", "gain": -6 },
+    { "beat": 10, "sfx": "whoosh", "seconds": 0.7, "up": false, "gain": -6 },
+    { "beat": 12, "sfx": "riser", "seconds": 1.3, "gain": -6 },
+    { "beat": 12, "sfx": "impact", "gain": 0 },
+    { "beat": 12, "sfx": "sub", "gain": -4 },
+    { "beat": 14, "sfx": "pop", "gain": -9 },
+    { "beat": 15, "sfx": "pop", "gain": -9 },
+    { "beat": 16, "sfx": "pop", "gain": -9 },
+    { "beat": 17, "sfx": "pop", "gain": -9 },
+    { "beat": 18, "sfx": "pop", "gain": -8 },
+    { "beat": 20, "sfx": "whoosh", "seconds": 0.7, "gain": -6 },
+    { "beat": 20.5, "sfx": "tick", "gain": -4 },
+    { "beat": 21.5, "sfx": "tick", "gain": -4 },
+    { "beat": 22.5, "sfx": "tick", "gain": -4 },
+    { "beat": 26, "sfx": "impact", "big": 0.7, "gain": -4 },
+    { "beat": 27, "sfx": "shimmer", "gain": -7 }
+  ]
+}
