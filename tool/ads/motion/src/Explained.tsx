@@ -114,7 +114,7 @@ function Selfie({ mesh }: { mesh: Mesh }) {
       <AbsoluteFill style={{ background: "linear-gradient(rgba(0,0,0,.65), transparent 25%, transparent 66%, rgba(0,0,0,.85))" }} />
       <Slam text="One selfie." at={b(8)} size={150} split={false} style={{ position: "absolute", top: 250, width: "100%" }} />
       <MaskText lines={["134 points,", { text: "read in seconds.", color: C.mint }]} at={b(11.5)} size={84} style={{ position: "absolute", top: 1330, width: "100%" }} />
-      <Note text="Demo scan" style={{ position: "absolute", top: 420, width: "100%", textAlign: "center" }} />
+      <Note text="Shown on a model" style={{ position: "absolute", top: 420, width: "100%", textAlign: "center" }} />
       <AbsoluteFill style={{ background: "#fff", opacity: flash * 0.9 }} />
     </AbsoluteFill>
   );
@@ -169,7 +169,7 @@ function Report({ manifest }: { manifest: Manifest }) {
           </div>
         </AbsoluteFill>
       ) : null}
-      <Note text="Example report · demo scan" style={{ position: "absolute", top: 1450, width: "100%", textAlign: "center", fontSize: 22 }} />
+      <Note text="Example report · shown on a model" style={{ position: "absolute", top: 1450, width: "100%", textAlign: "center", fontSize: 22 }} />
     </AbsoluteFill>
   );
 }

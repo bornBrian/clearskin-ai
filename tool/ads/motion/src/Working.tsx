@@ -127,7 +127,7 @@ function SameFace() {
           );
         })}
       </Float>
-      <Note text="Demo photos" style={{ position: "absolute", top: 1420, width: "100%", textAlign: "center", fontSize: 22, opacity: 0.5 * (1 - fall) }} />
+      <Note text="Model photos" style={{ position: "absolute", top: 1420, width: "100%", textAlign: "center", fontSize: 22, opacity: 0.5 * (1 - fall) }} />
       <Vignette />
     </AbsoluteFill>
   );

@@ -2,7 +2,7 @@
 
 Calm and editorial: licensed photography, slow push-ins, crossfades, light
 type that fades in, film grain, and a piano track with every cut on its
-beat. The scan is a demonstration on a model (labelled "Demo scan"); the
+beat. The scan is a demonstration on a model (labelled "Shown on a model"); the
 mesh and lens maps are the app engine's real readings of that photo. No
 first-person claims and no results are attributed to her.
 
@@ -286,7 +286,7 @@ def s_scan(t):
 def demo(img, t):
     d = ImageDraw.Draw(img)
     f = font(600, 22)
-    s = 'DEMO SCAN'
+    s = 'SHOWN ON A MODEL'
     tracked(d, (W - 80 - tracked_width(s, f, 4), 1620), s, f, rgba(WHITE, 0.7 * ease(t / 0.6)), 4)
 
 

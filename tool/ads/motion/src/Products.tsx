@@ -207,7 +207,7 @@ function FaceScene({ mesh }: { mesh: Mesh }) {
       </AbsoluteFill>
       <Words text="ClearSkin reads" at={b(12)} size={96} weight={700} color={C.ink} style={{ position: "absolute", top: 1270, width: "100%" }} />
       <Words text="your skin first." at={b(13)} size={96} weight={700} color={C.leaf} style={{ position: "absolute", top: 1380, width: "100%" }} />
-      <Note text="Demo scan on a model" color={C.ink} style={{ position: "absolute", top: 1530, width: "100%", textAlign: "center", fontSize: 22 }} />
+      <Note text="Shown on a model" color={C.ink} style={{ position: "absolute", top: 1530, width: "100%", textAlign: "center", fontSize: 22 }} />
     </AbsoluteFill>
   );
 }

@@ -185,7 +185,7 @@ def model_view(zoom):
 def demo_label(img):
     d = ImageDraw.Draw(img)
     f = font(700, 24)
-    s = 'DEMO SCAN'
+    s = 'SHOWN ON A MODEL'
     tw = f.getlength(s)
     d.rounded_rectangle((W - 70 - tw - 24, 1560, W - 70, 1604), 22, fill=(0, 0, 0, 120))
     d.text((W - 70 - tw - 12, 1569), s, font=f, fill=(255, 255, 255, 230))

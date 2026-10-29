@@ -139,7 +139,7 @@ function Agitate({ i }: { i: number }) {
 }
 
 const STEPS = [
-  { n: "01", title: ["Scan", "your face."], note: "Demo scan" },
+  { n: "01", title: ["Scan", "your face."], note: "Shown on a model" },
   { n: "02", title: ["Get a routine", "for your skin."], note: "" },
   { n: "03", title: ["Track what", "changes."], note: "Sample data" },
 ];

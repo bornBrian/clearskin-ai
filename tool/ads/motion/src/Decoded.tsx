@@ -132,7 +132,7 @@ export function Decoded() {
             <div style={{ position: "absolute", top: 1240, width: "100%", textAlign: "center", fontFamily: FONT, fontSize: 190, fontWeight: 700, letterSpacing: "-0.045em", color: l.color === C.cream ? "#fff" : l.color }}>
               {l.word}
             </div>
-            <Note text="Demo scan" style={{ position: "absolute", top: 230, width: "100%", textAlign: "center" }} />
+            <Note text="Shown on a model" style={{ position: "absolute", top: 230, width: "100%", textAlign: "center" }} />
             <Flash at={b(11 + i)} peak={0.18} />
           </AbsoluteFill>
         </Range>
@@ -215,7 +215,7 @@ function ScanScene({ mesh }: { mesh: Mesh }) {
           : null}
       </AbsoluteFill>
       <AbsoluteFill style={{ background: "linear-gradient(rgba(0,0,0,.5), transparent 22%, transparent 70%, rgba(0,0,0,.8))" }} />
-      <Note text="Demo scan" style={{ position: "absolute", top: 230, width: "100%", textAlign: "center" }} />
+      <Note text="Shown on a model" style={{ position: "absolute", top: 230, width: "100%", textAlign: "center" }} />
       <Words text="134 points." at={b(8.5)} size={120} weight={700} style={{ position: "absolute", top: 1330, width: "100%" }} />
       <Words text="Read on your phone." at={b(9.5)} size={64} weight={500} color={C.mint} stagger={2} style={{ position: "absolute", top: 1480, width: "100%" }} />
     </AbsoluteFill>
@@ -282,7 +282,7 @@ function ScoreScene() {
           );
         })}
       </div>
-      <Note text="Demo scan on a model" style={{ position: "absolute", top: 1580, width: "100%", textAlign: "center", fontSize: 22 }} />
+      <Note text="Shown on a model" style={{ position: "absolute", top: 1580, width: "100%", textAlign: "center", fontSize: 22 }} />
     </AbsoluteFill>
   );
 }
