@@ -1,7 +1,7 @@
 # Photography
 
 ClearSkin uses **no people in its imagery**, except the sign-in screen, which
-takes turns between two portraits with different skin tones. Everything else is texture, product (unbranded) and botanical
+slides between five portraits: women and men with different skin tones. Everything else is texture, product (unbranded) and botanical
 photography, plus drawn visuals (score dial, journey arc, product line art,
 dot-matrix face map).
 
@@ -18,6 +18,9 @@ fine in-app, but don't use them in ads or store screenshots.
 |---|---|
 | auth.webp | photo-1764662028080-227b6ccc808f |
 | auth_2.webp | photo-1758183583798-b7038bca9272 (Hamed Farahpour) |
+| auth_3.webp | photo-1587064712555-6e206484699b (Jassir Jonis), cropped above the shirt print |
+| auth_4.webp | photo-1768398222507-9f551fa0e9e8 (Tony Chen) |
+| auth_5.webp | photo-1754473397061-e18dc1091855 (mehdi pezhvak) |
 | sage_waves.webp | photo-1763920999620-f76ea1aeb3ac |
 | leaf_shadow.webp | photo-1565430973830-b12076b15215 |
 | plant_wall.webp | photo-1600172454284-934feca24ccd |

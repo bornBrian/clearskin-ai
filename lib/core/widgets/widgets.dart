@@ -693,11 +693,14 @@ class Wordmark extends StatelessWidget {
 abstract final class Photos {
   static const _dir = 'assets/images/photos';
 
-  /// The only portraits in the app, on the sign-in screen. Different skin
-  /// tones; they slide from one to the next, in this order.
+  /// The only portraits in the app, on the sign-in screen. Women and men,
+  /// different skin tones; they slide from one to the next, in this order.
   static const auth = '$_dir/auth.webp';
   static const auth2 = '$_dir/auth_2.webp';
-  static const authPortraits = [auth2, auth];
+  static const auth3 = '$_dir/auth_3.webp';
+  static const auth4 = '$_dir/auth_4.webp';
+  static const auth5 = '$_dir/auth_5.webp';
+  static const authPortraits = [auth2, auth3, auth, auth4, auth5];
 
   static const sageWaves = '$_dir/sage_waves.webp';
   static const leafShadow = '$_dir/leaf_shadow.webp';
