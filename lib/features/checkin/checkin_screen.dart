@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/utils/dates.dart';
-import '../../core/widgets/widgets.dart';
 import '../../data/models/check_in.dart';
 import '../../data/models/profile.dart';
 import '../../services/telemetry.dart';
@@ -73,7 +72,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final profile = ref.watch(profileProvider).value;
     final tags = LifeTag.values.where((t) {
       if (t == LifeTag.period) {
@@ -85,7 +83,6 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
       return true;
     });
 
-    const feelEmoji = ['😣', '😕', '🙂', '😊', '🤩'];
     const feelLabel = ['Rough', 'Meh', 'OK', 'Good', 'Great'];
     const breakoutLabel = ['None', '1–2', 'Several', 'Many'];
 
@@ -108,58 +105,18 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
         children: [
           Text('How does your skin feel?', style: context.text.titleLarge),
           const SizedBox(height: Space.sm),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              for (var i = 0; i < 5; i++)
-                Semantics(
-                  label: feelLabel[i],
-                  selected: _feel == i + 1,
-                  button: true,
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _feel = i + 1);
-                    },
-                    child: AnimatedContainer(
-                      duration: Motion.fast,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: _feel == i + 1
-                            ? c.primarySoft
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(Radii.md),
-                        border: Border.all(
-                          color: _feel == i + 1
-                              ? c.primary
-                              : Colors.transparent,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            feelEmoji[i],
-                            style: const TextStyle(fontSize: 30),
-                          ),
-                          Text(feelLabel[i], style: context.text.labelSmall),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+          _Words(
+            labels: feelLabel,
+            index: _feel - 1,
+            onChanged: (i) => setState(() => _feel = i + 1),
           ),
           const SizedBox(height: Space.lg),
           Text('New breakouts today', style: context.text.titleLarge),
           const SizedBox(height: Space.sm),
-          SegmentedButton<int>(
-            showSelectedIcon: false,
-            segments: [
-              for (var i = 0; i < 4; i++)
-                ButtonSegment(value: i, label: Text(breakoutLabel[i])),
-            ],
-            selected: {_breakouts},
-            onSelectionChanged: (s) => setState(() => _breakouts = s.first),
+          _Words(
+            labels: breakoutLabel,
+            index: _breakouts,
+            onChanged: (i) => setState(() => _breakouts = i),
           ),
           const SizedBox(height: Space.lg),
           _SliderRow(
@@ -199,19 +156,23 @@ class _CheckInScreenState extends ConsumerState<CheckInScreen> {
           const SizedBox(height: Space.md),
           Text('Anything notable today?', style: context.text.titleLarge),
           const SizedBox(height: Space.sm),
-          Wrap(
-            spacing: Space.xs,
-            runSpacing: Space.xs,
-            children: [
-              for (final t in tags)
-                FilterChip(
-                  label: Text('${t.emoji} ${t.label}'),
-                  selected: _tags.contains(t),
-                  showCheckmark: false,
-                  onSelected: (v) =>
-                      setState(() => v ? _tags.add(t) : _tags.remove(t)),
-                ),
-            ],
+          LayoutBuilder(
+            builder: (context, box) => Wrap(
+              children: [
+                for (final t in tags)
+                  SizedBox(
+                    width: box.maxWidth / 2,
+                    child: _Tick(
+                      label: t.label,
+                      on: _tags.contains(t),
+                      onTap: () => setState(
+                        () =>
+                            _tags.contains(t) ? _tags.remove(t) : _tags.add(t),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: Space.lg),
           TextField(
@@ -258,7 +219,13 @@ class _SliderRow extends StatelessWidget {
         Row(
           children: [
             Expanded(child: Text(label, style: context.text.titleMedium)),
-            Pill(display),
+            Text(
+              display,
+              style: context.text.titleMedium?.copyWith(
+                color: context.colors.inkMuted,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
           ],
         ),
         Slider(
@@ -270,6 +237,112 @@ class _SliderRow extends StatelessWidget {
           onChanged: onChanged,
         ),
       ],
+    );
+  }
+}
+
+/// One choice from a few words: the chosen one dark with a hairline under
+/// it, the rest faint. No boxes, no faces.
+class _Words extends StatelessWidget {
+  const _Words({
+    required this.labels,
+    required this.index,
+    required this.onChanged,
+  });
+
+  final List<String> labels;
+  final int index;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Row(
+      children: [
+        for (var i = 0; i < labels.length; i++)
+          Expanded(
+            child: Semantics(
+              button: true,
+              selected: i == index,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onChanged(i);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Space.sm),
+                  child: Column(
+                    children: [
+                      AnimatedDefaultTextStyle(
+                        duration: Motion.fast,
+                        style: context.text.titleMedium!.copyWith(
+                          color: i == index ? c.ink : c.inkFaint,
+                          fontWeight: i == index
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
+                        child: Text(labels[i]),
+                      ),
+                      const SizedBox(height: 6),
+                      AnimatedContainer(
+                        duration: Motion.fast,
+                        height: 2,
+                        width: i == index ? 22 : 0,
+                        color: c.ink,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// A row in a checklist: the label, and a tick when it's on.
+class _Tick extends StatelessWidget {
+  const _Tick({required this.label, required this.on, required this.onTap});
+
+  final String label;
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      selected: on,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: Space.sm),
+          margin: const EdgeInsets.only(right: Space.md),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: c.line)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: context.text.bodyLarge?.copyWith(
+                    color: on ? c.ink : c.inkMuted,
+                    fontWeight: on ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ),
+              if (on) Icon(Icons.check_rounded, size: 18, color: c.ink),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

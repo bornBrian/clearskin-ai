@@ -27,6 +27,10 @@ import 'package:clearskin_ai/features/auth/auth_screen.dart';
 import 'package:clearskin_ai/features/home/today_screen.dart';
 import 'package:clearskin_ai/features/journey/journey_screen.dart';
 import 'package:clearskin_ai/features/settings/reminders_screen.dart';
+import 'package:clearskin_ai/features/checkin/checkin_screen.dart';
+import 'package:clearskin_ai/features/coach/coach_screen.dart';
+import 'package:clearskin_ai/features/products/product_detail_screen.dart';
+import 'package:clearskin_ai/features/settings/settings_screen.dart';
 import 'package:clearskin_ai/services/auth_service.dart';
 import 'package:clearskin_ai/domain/premium/renewal.dart';
 import 'package:clearskin_ai/domain/routine/routine_engine.dart';
@@ -516,8 +520,12 @@ Future<void> _warmSamplePhoto(WidgetTester tester) async {
 /// overflow fails the test. The stress pass testers do by hand.
 final _qa = Platform.environment['QA'];
 
-Future<void> _shot(WidgetTester tester, Widget app, String name) =>
-    withClock(Clock.fixed(_now), () => _shotNow(tester, app, name));
+Future<void> _shot(
+  WidgetTester tester,
+  Widget app,
+  String name, {
+  DateTime? at,
+}) => withClock(Clock.fixed(at ?? _now), () => _shotNow(tester, app, name));
 
 Future<void> _shotNow(WidgetTester tester, Widget app, String name) async {
   if (_qa == 'small') {
@@ -860,6 +868,8 @@ void main() {
         profile: null,
       ),
       '13b-create-account',
+      // A second later: the sign-in screen's other portrait.
+      at: _now.add(const Duration(seconds: 1)),
     );
   });
 
@@ -884,6 +894,89 @@ void main() {
         ],
       ),
       '15-reminders',
+    );
+  });
+
+  testWidgets('30 settings', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [GoRoute(path: '/', builder: (_, _) => const SettingsScreen())],
+      ),
+      '30-settings',
+    );
+  });
+
+  testWidgets('31 coach', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [GoRoute(path: '/', builder: (_, _) => const CoachScreen())],
+      ),
+      '31-coach',
+    );
+  });
+
+  testWidgets('32 check-in', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [GoRoute(path: '/', builder: (_, _) => const CheckInScreen())],
+      ),
+      '32-checkin',
+    );
+  });
+
+  testWidgets('33 setup question, skin type', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const OnboardingFlow(startAt: 5),
+          ),
+        ],
+        profile: null,
+      ),
+      '33-setup-skin-type',
+    );
+  });
+
+  testWidgets('34 setup question, concerns', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const OnboardingFlow(startAt: 7),
+          ),
+        ],
+        profile: null,
+      ),
+      '34-setup-concerns',
+    );
+  });
+
+  testWidgets('35 product detail', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const ProductDetailScreen(productId: 'p2'),
+          ),
+        ],
+      ),
+      '35-product-detail',
     );
   });
 
@@ -970,15 +1063,17 @@ void main() {
   }
 
   testWidgets('24 step guide', (t) async {
-    final step = RoutineEngine.build(profile: _profile).pm.firstWhere(
-      (s) => s.id == 'pm.retinoid',
-    );
+    final step = RoutineEngine.build(profile: _profile).pm
+        .firstWhere((s) => s.id == 'pm.retinoid');
     await _shot(
       t,
       _app(
         initial: '/',
         routes: [
-          GoRoute(path: '/', builder: (_, _) => _OpenSheet(step: step)),
+          GoRoute(
+            path: '/',
+            builder: (_, _) => _OpenSheet(step: step),
+          ),
         ],
       ),
       '24-step-guide',

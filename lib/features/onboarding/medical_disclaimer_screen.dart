@@ -27,15 +27,12 @@ class _MedicalDisclaimerScreenState
   static const _points = [
     (
       'Not a diagnosis',
-      'ClearSkin estimates how your skin looks and suggests cosmetic care. It does not diagnose, treat or prescribe for any medical condition.',
+      'Cosmetic care only. No diagnosis, treatment or prescriptions.',
     ),
-    (
-      'Not a doctor',
-      'It doesn\'t replace a dermatologist, doctor or pharmacist. Always follow their advice over the app\'s.',
-    ),
+    ('Not a doctor', 'Your dermatologist\'s advice always comes first.'),
     (
       'When to get help',
-      'See a professional for changing or bleeding moles, painful or scarring acne, spreading rashes, swelling or infection. In an emergency, call your local emergency number.',
+      'Changing moles, painful acne, spreading rashes or infection: see a professional. In an emergency, call your local number.',
     ),
   ];
 
@@ -173,7 +170,7 @@ class _MedicalDisclaimerScreenState
                                 ),
                                 Expanded(
                                   child: Text(
-                                    'I understand ClearSkin doesn\'t give medical diagnosis or prescriptions.',
+                                    'I understand this isn\'t medical advice.',
                                     style: context.text.bodyMedium?.copyWith(
                                       color: cream,
                                     ),

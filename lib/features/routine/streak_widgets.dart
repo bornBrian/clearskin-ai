@@ -19,146 +19,65 @@ import '../../domain/routine/streaks.dart';
 import '../../services/telemetry.dart';
 import 'streak_flame.dart';
 
-/// Today's streak: the number, the best, any savers, and the last two
-/// weeks as tick marks (done, saved by a saver, or missed).
+/// Today's streak in one line: the flame, the count and what to do next.
+/// Tapping opens this week's flames.
 class StreakLine extends ConsumerWidget {
   const StreakLine({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(streakStateProvider);
-    final done = ref.watch(completedDaysProvider);
     final c = context.colors;
     final yesterday = Dates.dayKey(
       clock.now().subtract(const Duration(days: 1)),
     );
     final atRisk = s.current > 0 && !s.doneToday;
+    final title = s.current == 0 ? 'No streak yet' : '${s.current}-day streak';
     final detail = s.current == 0
-        ? 'Finish a routine to light it'
+        ? 'Finish a routine to start one'
         : atRisk
         ? 'Finish a routine today to keep it'
         : s.savedDays.contains(yesterday)
-        ? 'A saver kept it going yesterday'
-        : [
-            if (s.best > s.current) 'Best ${s.best}',
-            if (s.savers > 0)
-              '${s.savers} streak saver${s.savers == 1 ? '' : 's'}',
-            if (s.best <= s.current && s.current > 1) 'Your best yet',
-          ].join(' · ');
+        ? 'A saver kept it going'
+        : s.best > s.current
+        ? 'Best: ${s.best} days'
+        : 'Your best yet';
     return Semantics(
-      label: '${s.current} day streak. $detail',
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          StreakFlame(lit: s.doneToday && s.current > 0, size: 34),
-          const SizedBox(width: Space.xs),
-          Text(
-            '${s.current}',
-            style: context.text.displaySmall?.copyWith(
-              fontWeight: FontWeight.w200,
-              height: 1,
-            ),
-          ),
-          const SizedBox(width: Space.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('day streak', style: context.text.titleSmall),
-                if (detail.isNotEmpty)
-                  Text(
-                    detail,
-                    style: context.text.bodySmall?.copyWith(
-                      color: atRisk ? c.warn : null,
+      button: true,
+      excludeSemantics: true,
+      label: '$title. $detail',
+      child: InkWell(
+        onTap: () => showStreakWeek(context),
+        borderRadius: BorderRadius.circular(Radii.sm),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: Space.xs),
+          child: Row(
+            children: [
+              StreakFlame(lit: s.doneToday && s.current > 0, size: 32),
+              const SizedBox(width: Space.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: context.text.titleMedium),
+                    Text(
+                      detail,
+                      style: context.text.bodySmall?.copyWith(
+                        color: atRisk ? c.warn : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            ),
-          ),
-          SizedBox(
-            width: 120,
-            height: 28,
-            child: CustomPaint(
-              painter: _DayTicks(
-                done: done,
-                saved: s.savedDays,
-                ink: c.ink,
-                faint: c.inkFaint,
+                  ],
+                ),
               ),
-            ),
+              Icon(Icons.chevron_right_rounded, color: c.inkFaint),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
-}
-
-/// The last 14 days, oldest on the left: tall ink tick = done, tall faint
-/// tick = covered by a saver, short tick = missed, open tick = today to go.
-class _DayTicks extends CustomPainter {
-  const _DayTicks({
-    required this.done,
-    required this.saved,
-    required this.ink,
-    required this.faint,
-  });
-
-  final Set<String> done;
-  final Set<String> saved;
-  final Color ink;
-  final Color faint;
-
-  static const days = 14;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final today = Dates.startOfDay(clock.now());
-    final gap = size.width / days;
-    for (var i = 0; i < days; i++) {
-      final d = DateTime(today.year, today.month, today.day - (days - 1 - i));
-      final key = Dates.dayKey(d);
-      final x = gap * i + gap / 2;
-      final isToday = i == days - 1;
-      final paint = Paint()
-        ..strokeWidth = 2.4
-        ..strokeCap = StrokeCap.round;
-      double h;
-      if (done.contains(key)) {
-        paint.color = ink;
-        h = size.height;
-      } else if (saved.contains(key)) {
-        paint.color = ink.withValues(alpha: 0.35);
-        h = size.height;
-      } else if (isToday) {
-        paint
-          ..color = ink
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.2;
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTWH(x - 2, 0, 4, size.height),
-            const Radius.circular(2),
-          ),
-          paint,
-        );
-        continue;
-      } else {
-        paint.color = faint.withValues(alpha: 0.5);
-        h = size.height * 0.35;
-      }
-      canvas.drawLine(
-        Offset(x, size.height),
-        Offset(x, size.height - h),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DayTicks old) =>
-      old.done != done || old.saved != saved || old.ink != ink;
 }
 
 /// One line for each milestone, in the voice of the app.

@@ -335,7 +335,7 @@ class _FaceMapState extends State<FaceMap> with SingleTickerProviderStateMixin {
         if (_canMeasure && hasPhoto) ...[
           const SizedBox(height: Space.sm),
           Text(
-            'Measured on your phone from this photo\'s colour. Light can shift readings.',
+            'Measured on your phone. Light can shift readings.',
             style: context.text.bodySmall?.copyWith(color: c.inkFaint),
           ),
         ],

@@ -132,8 +132,8 @@ class BackendApi {
   }) async {
     if (Env.aiDemo) {
       await Future<void>.delayed(const Duration(milliseconds: 900));
-      return 'Demo mode: connect the backend to chat with your AI coach. '
-          'In the meantime, keep your routine consistent and wear SPF daily!';
+      return 'Your coach is almost ready. Until then: keep your routine '
+          'steady and wear SPF every day.';
     }
     // Last 20 turns are plenty of context and cap cost.
     final recent = history.length > 20

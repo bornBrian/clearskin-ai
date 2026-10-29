@@ -10,6 +10,7 @@ import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models/profile.dart';
+import '../../data/repositories/repositories.dart';
 import '../../domain/journey/journey_engine.dart';
 import '../../services/telemetry.dart';
 import 'onboarding_widgets.dart';
@@ -18,7 +19,10 @@ import 'onboarding_widgets.dart';
 /// and the flow builds investment before the paywall (a proven pattern for
 /// subscription apps) without ever blocking safety information.
 class OnboardingFlow extends ConsumerStatefulWidget {
-  const OnboardingFlow({super.key});
+  const OnboardingFlow({super.key, this.startAt = 0});
+
+  /// Step to open on, for screenshots of a single question.
+  final int startAt;
 
   @override
   ConsumerState<OnboardingFlow> createState() => _OnboardingFlowState();
@@ -45,7 +49,10 @@ enum _Step {
 }
 
 class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
-  final _page = PageController();
+  // Created on first use, after initState has picked the starting step.
+  late final _page = PageController(
+    initialPage: _index > _firstQuestion ? _index - _firstQuestion : 0,
+  );
   final _nameField = TextEditingController();
   int _index = 0;
 
@@ -88,6 +95,80 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
 
   _Step get _current => _steps[_index];
 
+  @override
+  void initState() {
+    super.initState();
+    // Already signed in (say the app closed during setup): never the
+    // welcome or sign-in screen again, straight on with the setup.
+    if (ref.read(accountProvider).value != null) {
+      _index = 1;
+      unawaited(_restoreDraft());
+    }
+    if (widget.startAt > _index) _index = widget.startAt;
+  }
+
+  /// Picks up where setup stopped if the app closed part-way through.
+  Future<void> _restoreDraft() async {
+    final j = await ref.read(kvProvider).getJson(KvKeys.onboardingDraft);
+    if (j == null || !mounted) return;
+    T? pick<T extends Enum>(List<T> values, Object? name) =>
+        values.where((v) => v.name == name).firstOrNull;
+    List<T> picks<T extends Enum>(List<T> values, Object? names) => [
+      for (final n in (names as List?) ?? const []) ?pick(values, n),
+    ];
+    setState(() {
+      _name = j['name'] as String? ?? '';
+      _nameField.text = _name;
+      _gender = pick(Gender.values, j['gender']);
+      _age = pick(AgeRange.values, j['age']);
+      _skinType = pick(SkinType.values, j['skinType']);
+      _sensitivity = pick(Sensitivity.values, j['sensitivity']);
+      _concerns
+        ..clear()
+        ..addAll(picks(Concern.values, j['concerns']));
+      _goals
+        ..clear()
+        ..addAll(picks(Goal.values, j['goals']));
+      _tone = pick(SkinTone.values, j['tone']);
+      _pregnant = j['pregnant'] as bool?;
+      _shaves = j['shaves'] as bool?;
+      _complexity = pick(RoutineComplexity.values, j['complexity']);
+      _reminders = j['reminders'] as bool? ?? true;
+      // Never straight into "building": the last question is shown again.
+      final saved = (j['index'] as int? ?? _index).clamp(
+        _index,
+        _steps.length - 2,
+      );
+      _index = saved;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _page.hasClients && _index >= _firstQuestion) {
+        _page.jumpToPage(_index - _firstQuestion);
+      }
+    });
+  }
+
+  void _saveDraft() {
+    if (_index < _firstQuestion) return;
+    unawaited(
+      ref.read(kvProvider).setJson(KvKeys.onboardingDraft, {
+        'index': _index,
+        'name': _name,
+        'gender': _gender?.name,
+        'age': _age?.name,
+        'skinType': _skinType?.name,
+        'sensitivity': _sensitivity?.name,
+        'concerns': [for (final c in _concerns) c.name],
+        'goals': [for (final g in _goals) g.name],
+        'tone': _tone?.name,
+        'pregnant': _pregnant,
+        'shaves': _shaves,
+        'complexity': _complexity?.name,
+        'reminders': _reminders,
+      }),
+    );
+  }
+
   /// Index of the first quiz question (after welcome and the journey).
   static const _firstQuestion = 2;
 
@@ -122,6 +203,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       unawaited(ref.read(notificationServiceProvider).requestPermission());
     }
     setState(() => _index++);
+    _saveDraft();
     if (_index > _firstQuestion && _page.hasClients) {
       _page.animateToPage(
         _index - _firstQuestion,
@@ -135,6 +217,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   void _back() {
     if (_index == 0) return;
     setState(() => _index--);
+    _saveDraft();
     if (_index >= _firstQuestion && _page.hasClients) {
       _page.animateToPage(
         _index - _firstQuestion,
@@ -218,6 +301,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     await context.push('/plan', extra: profile);
     if (!mounted) return;
     await ref.read(profileProvider.notifier).save(profile);
+    await ref.read(kvProvider).remove(KvKeys.onboardingDraft);
   }
 
   @override
@@ -585,17 +669,6 @@ class WelcomeStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    Widget point(IconData icon, String text) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        children: [
-          Icon(icon, size: 19, color: c.ink),
-          const SizedBox(width: Space.md),
-          Expanded(child: Text(text, style: context.text.bodyLarge)),
-        ],
-      ),
-    );
-
     return Scaffold(
       body: AuraBackground(
         intensity: 1.3,
@@ -644,31 +717,13 @@ class WelcomeStep extends StatelessWidget {
                               .slideY(begin: 0.15, curve: Curves.easeOutCubic),
                           const SizedBox(height: Space.sm),
                           Text(
-                                'A personal skin coach for every skin tone and every gender.',
+                                'A skin coach for every skin tone.',
                                 style: context.text.bodyLarge?.copyWith(
                                   color: c.inkMuted,
                                 ),
                               )
                               .animate(delay: 250.ms)
                               .fadeIn(duration: Motion.slow),
-                          const SizedBox(height: Space.lg),
-                          ...[
-                                point(
-                                  Icons.center_focus_weak_rounded,
-                                  'AI skin scan in 10 seconds',
-                                ),
-                                point(
-                                  Icons.event_note_outlined,
-                                  'A routine built for your skin',
-                                ),
-                                point(
-                                  Icons.lock_outline_rounded,
-                                  'Photos stay on your phone',
-                                ),
-                              ]
-                              .animate(interval: 80.ms, delay: 350.ms)
-                              .fadeIn()
-                              .slideX(begin: 0.05),
                           const SizedBox(height: Space.lg),
                           ArrowPill(label: 'Get started', onTap: onStart),
                           Center(

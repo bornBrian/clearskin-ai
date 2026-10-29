@@ -41,7 +41,10 @@ class PlanRevealScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final routine = RoutineEngine.build(profile: profile);
     final timeline = PlanCopy.timeline(profile);
-    final journey = JourneyEngine.build(profile: profile, usableScans: const []);
+    final journey = JourneyEngine.build(
+      profile: profile,
+      usableScans: const [],
+    );
     final name = profile.firstName;
     final top = MediaQuery.paddingOf(context).top;
     const cream = BrandColors.cream;
@@ -128,7 +131,7 @@ class PlanRevealScreen extends ConsumerWidget {
                                   _Outcomes(timeline: timeline),
                                   const SizedBox(height: Space.xs),
                                   Text(
-                                    'Typical with daily use. Your weekly scans show the real thing.',
+                                    'Typical with daily use.',
                                     style: context.text.bodySmall?.copyWith(
                                       color: context.colors.inkFaint,
                                     ),
@@ -360,10 +363,7 @@ abstract final class PlanCopy {
 
   static List<(String, String)> timeline(UserProfile p) {
     final (w6, w12) = switch (primary(p)) {
-      Concern.acne => (
-        'Fewer new breakouts',
-        'Clearer skin, marks fading',
-      ),
+      Concern.acne => ('Fewer new breakouts', 'Clearer skin, marks fading'),
       Concern.blackheads => (
         'Pores look clearer',
         'Smoother, less congested skin',

@@ -210,14 +210,18 @@ class StreakFlameCount extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               StreakFlame(lit: s.doneToday && s.current > 0, size: 24),
-              const SizedBox(width: 5),
-              Text(
-                '${s.current}',
-                style: context.text.titleMedium?.copyWith(
-                  color: s.doneToday && s.current > 0 ? c.ink : c.inkMuted,
-                  fontWeight: FontWeight.w600,
+              // No "0" next to an unlit flame: the count appears once
+              // there is a streak to count.
+              if (s.current > 0) ...[
+                const SizedBox(width: 5),
+                Text(
+                  '${s.current}',
+                  style: context.text.titleMedium?.copyWith(
+                    color: s.doneToday ? c.ink : c.inkMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -476,12 +480,12 @@ class StreakWeekSheet extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${s.current} day streak',
+                      '${s.current}-day streak',
                       style: context.text.titleLarge,
                     ),
                     Text(
                       s.current == 0
-                          ? 'Finish a routine to light it.'
+                          ? 'Finish a routine to start one.'
                           : s.doneToday
                           ? 'Safe for today.'
                           : 'Finish a routine today to keep it.',
@@ -504,8 +508,8 @@ class StreakWeekSheet extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Every ${Streaks.saverEvery} days in a row earns a streak saver '
-            '(up to ${Streaks.maxSavers}). It covers one missed day for you.',
+            'Every ${Streaks.saverEvery} days in a row earns a saver for one '
+            'missed day.',
             style: context.text.bodySmall,
           ),
         ],

@@ -259,8 +259,9 @@ class CircleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // Unfilled: just the icon and its ripple, no bubble behind it.
     final button = Material(
-      color: filled ? c.primary : c.surface,
+      color: filled ? c.primary : Colors.transparent,
       shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -692,8 +693,11 @@ class Wordmark extends StatelessWidget {
 abstract final class Photos {
   static const _dir = 'assets/images/photos';
 
-  /// The only portrait in the app, on the sign-in screen.
+  /// The only portraits in the app, on the sign-in screen. Different skin
+  /// tones; the screen shows one at a time, taking turns.
   static const auth = '$_dir/auth.webp';
+  static const auth2 = '$_dir/auth_2.webp';
+  static const authPortraits = [auth, auth2];
 
   static const sageWaves = '$_dir/sage_waves.webp';
   static const leafShadow = '$_dir/leaf_shadow.webp';
@@ -1154,22 +1158,14 @@ class Disclaimer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          Icons.info_outline_rounded,
-          size: 15,
-          color: context.colors.inkFaint,
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            text ?? 'ClearSkin offers cosmetic guidance, not a medical diagnosis. For painful, spreading, bleeding or changing spots, see a dermatologist.',
-            style: context.text.bodySmall,
-          ),
-        ),
-      ],
+    // Quiet fine print: always there, never competing with the content.
+    return Text(
+      text ?? 'Cosmetic guidance, not a diagnosis. For painful, spreading or changing spots, see a dermatologist.',
+      style: context.text.bodySmall?.copyWith(
+        color: context.colors.inkFaint,
+        fontSize: 12,
+        height: 1.4,
+      ),
     );
   }
 }

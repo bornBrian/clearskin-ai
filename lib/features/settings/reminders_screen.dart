@@ -222,20 +222,19 @@ class _DayDot extends StatelessWidget {
       selected: selected,
       child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: Motion.fast,
+        behavior: HitTestBehavior.opaque,
+        // A letter, bold and dark when chosen: no circles.
+        child: SizedBox(
           width: 38,
           height: 38,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? c.primary : Colors.transparent,
-            shape: BoxShape.circle,
-            border: Border.all(color: selected ? c.primary : c.line),
-          ),
-          child: Text(
-            label,
-            style: context.text.labelLarge?.copyWith(
-              color: selected ? c.onPrimary : c.ink,
+          child: Center(
+            child: AnimatedDefaultTextStyle(
+              duration: Motion.fast,
+              style: context.text.titleMedium!.copyWith(
+                color: selected ? c.ink : c.inkFaint,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+              ),
+              child: Text(label),
             ),
           ),
         ),

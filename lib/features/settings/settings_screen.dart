@@ -66,41 +66,52 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-            child: AppCard(
-              onTap: premium
-                  ? () => launchUrl(
-                      storeSubscriptionsUri(sub),
-                      mode: LaunchMode.externalApplication,
-                    )
-                  : () => context.push('/paywall?source=settings'),
-              child: Row(
-                children: [
-                  Icon(
-                    premium
-                        ? Icons.workspace_premium_rounded
-                        : Icons.auto_awesome_rounded,
-                    color: c.primary,
-                  ),
-                  const SizedBox(width: Space.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          premium ? 'ClearSkin Premium' : 'Upgrade to Premium',
-                          style: context.text.titleMedium,
+            // Premium is a charcoal-and-cream moment, like the paywall.
+            child: Material(
+              color: BrandColors.charcoal,
+              borderRadius: BorderRadius.circular(Radii.md),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: premium
+                    ? () => launchUrl(
+                        storeSubscriptionsUri(sub),
+                        mode: LaunchMode.externalApplication,
+                      )
+                    : () => context.push('/paywall?source=settings'),
+                child: Padding(
+                  padding: const EdgeInsets.all(Space.md),
+                  child: Row(
+                    children: [
+                      const BrandMark(size: 40, color: BrandColors.cream),
+                      const SizedBox(width: Space.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              premium ? 'ClearSkin Premium' : 'Go Premium',
+                              style: context.text.titleMedium?.copyWith(
+                                color: BrandColors.cream,
+                              ),
+                            ),
+                            Text(
+                              premium
+                                  ? _planLine(sub)
+                                  : 'Unlimited scans, coach, no ads',
+                              style: context.text.bodySmall?.copyWith(
+                                color: BrandColors.cream.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          premium
-                              ? _planLine(sub)
-                              : 'Unlimited scans, coach, no ads',
-                          style: context.text.bodySmall,
-                        ),
-                      ],
-                    ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: BrandColors.cream,
+                      ),
+                    ],
                   ),
-                  const Icon(Icons.chevron_right_rounded),
-                ],
+                ),
               ),
             ),
           ),
@@ -109,9 +120,7 @@ class SettingsScreen extends ConsumerWidget {
             SwitchListTile(
               secondary: const Icon(Icons.notifications_active_outlined),
               title: const Text('Renewal reminders'),
-              subtitle: const Text(
-                'A week and a day before Premium ends, if it won\'t renew',
-              ),
+              subtitle: const Text('A week and a day before Premium ends'),
               value: renewalOn,
               onChanged: (v) =>
                   ref.read(renewalPrefsProvider.notifier).setEnabled(v),
@@ -191,8 +200,8 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('App lock'),
             subtitle: Text(
               AppStore.isApple
-                  ? 'Face ID or passcode to open. Also hides ClearSkin in the app switcher.'
-                  : 'Fingerprint, face or PIN to open. Also hides ClearSkin in recent apps and blocks screenshots.',
+                  ? 'Face ID or passcode to open'
+                  : 'Fingerprint or PIN to open',
             ),
             value: lock,
             onChanged: (v) async {
@@ -218,9 +227,7 @@ class SettingsScreen extends ConsumerWidget {
               return SwitchListTile(
                 secondary: const Icon(Icons.insights_outlined),
                 title: const Text('Share anonymous usage data'),
-                subtitle: const Text(
-                  'Helps us fix crashes and improve ClearSkin. Never includes photos, names or skin details.',
-                ),
+                subtitle: const Text('Never photos, names or skin details'),
                 value: !telemetry.optedOut,
                 onChanged: (v) async {
                   await telemetry.setOptOut(!v);
@@ -243,9 +250,7 @@ class SettingsScreen extends ConsumerWidget {
               'Delete account & all data',
               style: TextStyle(color: c.bad),
             ),
-            subtitle: const Text(
-              'Permanently erases everything, on this phone and our servers',
-            ),
+            subtitle: const Text('Here and on our servers. Can\'t be undone.'),
             onTap: () => _deleteEverything(context, ref),
           ),
           section('Support'),
@@ -289,9 +294,7 @@ class SettingsScreen extends ConsumerWidget {
             SwitchListTile(
               title: const Text('Dev Premium'),
               subtitle: Text(
-                Env.demoMode
-                    ? 'Demo mode: backend not configured'
-                    : 'Backend connected',
+                Env.demoMode ? 'Backend not configured' : 'Backend connected',
               ),
               value: premium,
               onChanged: (v) async {

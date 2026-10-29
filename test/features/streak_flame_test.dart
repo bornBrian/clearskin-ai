@@ -73,7 +73,7 @@ void main() {
     );
     await t.tap(find.byType(StreakFlameCount));
     await t.pumpAndSettle();
-    expect(find.text('3 day streak'), findsOneWidget);
+    expect(find.text('3-day streak'), findsOneWidget);
     expect(find.text('Safe for today.'), findsOneWidget);
     expect(find.byType(StreakWeek), findsOneWidget);
   });

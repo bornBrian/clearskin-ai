@@ -333,9 +333,7 @@ class WeekRuler extends StatelessWidget {
                       overflow: TextOverflow.clip,
                       style: context.text.labelMedium?.copyWith(
                         color: ink.withValues(
-                          alpha: current >= first && current <= last
-                              ? 1
-                              : 0.5,
+                          alpha: current >= first && current <= last ? 1 : 0.5,
                         ),
                         fontWeight: current >= first && current <= last
                             ? FontWeight.w600
@@ -499,16 +497,28 @@ class _GlyphPainter extends CustomPainter {
           ..close();
         canvas.drawPath(body, p);
         canvas.drawRRect(rr(0.40, 0.70, 0.60, 0.86, 0.03), p);
-        canvas.drawLine(Offset(0.36 * s, 0.22 * s), Offset(0.64 * s, 0.22 * s), p);
+        canvas.drawLine(
+          Offset(0.36 * s, 0.22 * s),
+          Offset(0.64 * s, 0.22 * s),
+          p,
+        );
       case _Vessel.dropper:
         canvas.drawRRect(rr(0.32, 0.42, 0.68, 0.88, 0.06), p);
         canvas.drawRRect(rr(0.40, 0.30, 0.60, 0.42, 0.02), p);
         canvas.drawRRect(rr(0.44, 0.10, 0.56, 0.30, 0.06), p);
-        canvas.drawLine(Offset(0.32 * s, 0.56 * s), Offset(0.68 * s, 0.56 * s), p);
+        canvas.drawLine(
+          Offset(0.32 * s, 0.56 * s),
+          Offset(0.68 * s, 0.56 * s),
+          p,
+        );
       case _Vessel.jar:
         canvas.drawRRect(rr(0.24, 0.46, 0.76, 0.84, 0.08), p);
         canvas.drawRRect(rr(0.22, 0.34, 0.78, 0.46, 0.03), p);
-        canvas.drawLine(Offset(0.24 * s, 0.60 * s), Offset(0.76 * s, 0.60 * s), p);
+        canvas.drawLine(
+          Offset(0.24 * s, 0.60 * s),
+          Offset(0.76 * s, 0.60 * s),
+          p,
+        );
       case _Vessel.pump:
         canvas.drawRRect(rr(0.33, 0.40, 0.67, 0.88, 0.07), p);
         canvas.drawRRect(rr(0.43, 0.28, 0.57, 0.40, 0.02), p);
@@ -603,7 +613,9 @@ class TextTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final base = style ?? context.text.headlineSmall;
-    return Row(
+    // Wraps instead of overflowing on narrow phones or large text.
+    return Wrap(
+      runSpacing: Space.xs,
       children: [
         for (var i = 0; i < labels.length; i++)
           Padding(

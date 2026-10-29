@@ -1,7 +1,7 @@
 # Photography
 
-ClearSkin uses **no people in its imagery**, except a single portrait on the
-sign-in screen. Everything else is texture, product (unbranded) and botanical
+ClearSkin uses **no people in its imagery**, except the sign-in screen, which
+takes turns between two portraits with different skin tones. Everything else is texture, product (unbranded) and botanical
 photography, plus drawn visuals (score dial, journey arc, product line art,
 dot-matrix face map).
 
@@ -11,12 +11,13 @@ attribution required. Only standard (non-Unsplash+) photos are used, and none
 show a visible brand. Files live in `assets/images/photos/` and are referenced
 only through `Photos` in `lib/core/widgets/widgets.dart`.
 
-The sign-in portrait has no model release (Unsplash doesn't provide them):
-fine in-app, but don't use it in ads or store screenshots.
+The sign-in portraits have no model release (Unsplash doesn't provide them):
+fine in-app, but don't use them in ads or store screenshots.
 
 | File | Unsplash photo |
 |---|---|
 | auth.webp | photo-1764662028080-227b6ccc808f |
+| auth_2.webp | photo-1758183583798-b7038bca9272 (Hamed Farahpour) |
 | sage_waves.webp | photo-1763920999620-f76ea1aeb3ac |
 | leaf_shadow.webp | photo-1565430973830-b12076b15215 |
 | plant_wall.webp | photo-1600172454284-934feca24ccd |

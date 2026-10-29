@@ -135,12 +135,12 @@ abstract final class AppTheme {
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
           shape: const WidgetStatePropertyAll(stadium),
+          // Outline only: the choice reads by weight and colour, not by a
+          // filled pill.
           side: WidgetStatePropertyAll(BorderSide(color: c.line)),
-          backgroundColor: WidgetStateProperty.resolveWith(
-            (s) => s.contains(WidgetState.selected) ? c.primary : c.surface,
-          ),
+          backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
           foregroundColor: WidgetStateProperty.resolveWith(
-            (s) => s.contains(WidgetState.selected) ? c.onPrimary : c.ink,
+            (s) => s.contains(WidgetState.selected) ? c.ink : c.inkFaint,
           ),
           textStyle: WidgetStatePropertyAll(
             text.labelLarge?.copyWith(fontWeight: FontWeight.w600),
@@ -191,7 +191,7 @@ abstract final class AppTheme {
           (s) => s.contains(WidgetState.selected) ? c.onPrimary : c.inkFaint,
         ),
         trackColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.selected) ? c.leaf : c.surfaceAlt,
+          (s) => s.contains(WidgetState.selected) ? c.ink : c.surfaceAlt,
         ),
         trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
       ),

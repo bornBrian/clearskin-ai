@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -38,6 +39,11 @@ class AuthScreen extends ConsumerStatefulWidget {
 class _AuthScreenState extends ConsumerState<AuthScreen> {
   bool _busy = false;
   String? _busyProvider;
+
+  /// Which portrait this visit shows: they take turns, so no one face
+  /// stands for everyone.
+  late final String _portrait =
+      Photos.authPortraits[clock.now().second % Photos.authPortraits.length];
 
   Future<void> _done(Account a) async {
     // Skin photos and results are personal. If this phone holds someone
@@ -134,8 +140,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               right: 0,
               top: 0,
               height: size.height * 0.62,
-              child: const PhotoFill(
-                Photos.auth,
+              child: PhotoFill(
+                _portrait,
                 alignment: Alignment(0, -0.2),
                 scrim: 1,
                 scrimStart: 0.45,

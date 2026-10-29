@@ -28,25 +28,25 @@ abstract final class HabitCoach {
       Habit(
         'hands_off',
         'Hands off, no picking',
-        'Squeezing pushes inflammation deeper and turns a 5-day spot into a mark that lasts months. Use a patch instead.',
+        'Picking turns a 5-day spot into a mark that lasts months. Use a patch instead.',
         Evidence.strong,
       ),
       Habit(
         'pillowcase',
         'Fresh pillowcase twice a week',
-        'Oil, hair product and bacteria build up on it, right against your cheek for 8 hours.',
+        'It holds oil and bacteria against your cheek all night.',
         Evidence.moderate,
       ),
       Habit(
         'sweat',
         'Rinse within 30 minutes of sweating',
-        'Sweat trapped under caps, helmets and straps clogs pores along the forehead and jaw.',
+        'Trapped sweat clogs pores along the forehead and jaw. Caps, helmets and straps are the usual culprits.',
         Evidence.moderate,
       ),
       Habit(
         'glycaemic',
         'Fewer sugary drinks and white carbs',
-        'High-glycaemic diets are linked to more breakouts in several trials. Dairy (especially skim milk) is for some people too: try four weeks without and compare.',
+        'Sugary, fast-digesting food is linked to more breakouts. Dairy can be too: try four weeks without and compare.',
         Evidence.moderate,
       ),
     ],
@@ -66,7 +66,7 @@ abstract final class HabitCoach {
       Habit(
         'fragrance',
         'Fragrance-free everything',
-        'Fragrance is the most common cause of irritation from skincare, including "natural" essential oils.',
+        'Fragrance is the top cause of skincare irritation, essential oils included.',
         Evidence.strong,
       ),
     ],
@@ -80,7 +80,7 @@ abstract final class HabitCoach {
       Habit(
         'shade',
         'Hat and shade at midday',
-        'Visible light and heat also darken marks, especially on deeper skin tones. Sunscreen alone doesn\'t block all of it.',
+        'Light and heat darken marks too, especially on deeper skin. Sunscreen alone doesn\'t block all of it.',
         Evidence.moderate,
       ),
       Habit(
@@ -170,7 +170,7 @@ abstract final class HabitCoach {
       Habit(
         'cold',
         'Cold compress for puffiness',
-        'Two minutes with a cold spoon or chilled cloth tightens vessels and reduces morning puffiness.',
+        'Two minutes with a cold spoon eases morning puffiness.',
         Evidence.moderate,
       ),
       Habit(
@@ -191,7 +191,7 @@ abstract final class HabitCoach {
   static const _shaving = Habit(
     'shave_technique',
     'Shave with the grain, sharp blade',
-    'Most razor bumps come from technique: warm damp skin, light pressure, with the grain, a fresh blade every 5–7 shaves.',
+    'Most razor bumps come from technique. Warm damp skin, light pressure, with the grain, a fresh blade every 5–7 shaves.',
     Evidence.moderate,
   );
 

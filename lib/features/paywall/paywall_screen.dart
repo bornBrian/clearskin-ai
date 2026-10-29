@@ -338,9 +338,9 @@ class _Comparison extends StatelessWidget {
   static const _rows = [
     ('Skin scans', '2 a month', 'Unlimited'),
     ('Ads', 'Yes', 'None'),
-    ('AI skin coach', null, '✓'),
-    ('Before & after, with cards', null, '✓'),
-    ('Every measure, over time', null, '✓'),
+    ('Skin coach', null, '✓'),
+    ('Before & after', null, '✓'),
+    ('Every trend', null, '✓'),
     ('Breakout triggers', null, '✓'),
     ('Product checks', '3 a day', 'Unlimited'),
   ];
@@ -379,18 +379,13 @@ class _Comparison extends StatelessWidget {
                 ),
               ),
             ),
-            Container(
+            SizedBox(
               width: 86,
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              decoration: const BoxDecoration(
-                color: cream,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
-              ),
               child: Text(
                 'PREMIUM',
                 textAlign: TextAlign.center,
                 style: context.text.labelSmall?.copyWith(
-                  color: BrandColors.charcoal,
+                  color: cream,
                   letterSpacing: 1.2,
                   fontWeight: FontWeight.w700,
                 ),
@@ -443,25 +438,11 @@ class _TrialTimeline extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: i == 0 ? cream : Colors.transparent,
-                        border: Border.all(color: cream),
-                      ),
-                    ),
-                    if (i < steps.length - 1)
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          color: cream.withValues(alpha: 0.25),
-                        ),
-                      ),
-                  ],
+                // A hairline above each step, solid for today: no dots.
+                Container(
+                  height: 1.5,
+                  margin: const EdgeInsets.only(right: Space.sm),
+                  color: cream.withValues(alpha: i == 0 ? 1 : 0.25),
                 ),
                 const SizedBox(height: Space.sm),
                 Text(

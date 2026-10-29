@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/utils/dates.dart';
+import '../../core/utils/text.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models/check_in.dart';
 import '../../data/models/scan.dart';
@@ -119,20 +120,14 @@ class _TopBar extends StatelessWidget {
               height: 38,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: c.primary,
                 shape: BoxShape.circle,
+                border: Border.all(color: c.ink, width: 1.2),
               ),
               child: initial == null
-                  ? Icon(
-                      Icons.person_outline_rounded,
-                      size: 18,
-                      color: c.onPrimary,
-                    )
+                  ? Icon(Icons.person_outline_rounded, size: 18, color: c.ink)
                   : Text(
                       initial!.toUpperCase(),
-                      style: context.text.titleSmall?.copyWith(
-                        color: c.onPrimary,
-                      ),
+                      style: context.text.titleSmall?.copyWith(color: c.ink),
                     ),
             ),
           ),
@@ -505,9 +500,7 @@ class _Forecast extends ConsumerWidget {
     final forecast = ref.watch(forecastProvider);
     if (weather == null || forecast == null) return const SizedBox.shrink();
     final tip = forecast.tips.firstOrNull?.body;
-    final firstSentence = tip == null
-        ? null
-        : '${tip.split(RegExp(r'(?<=\.)\s')).first.replaceAll(RegExp(r'\.$'), '')}.';
+    final line = tip == null ? null : firstSentence(tip);
     return Padding(
       padding: const EdgeInsets.only(bottom: Space.xl),
       child: Column(
@@ -516,9 +509,9 @@ class _Forecast extends ConsumerWidget {
           Eyebrow('Forecast · ${profile!.location!.name.split(',').first}'),
           const SizedBox(height: Space.xs),
           Text(forecast.headline, style: context.text.headlineMedium),
-          if (firstSentence != null) ...[
+          if (line != null) ...[
             const SizedBox(height: Space.xxs),
-            Text(firstSentence, style: context.text.bodyMedium),
+            Text(line, style: context.text.bodyMedium),
           ],
           const SizedBox(height: Space.md),
           Container(

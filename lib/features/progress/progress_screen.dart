@@ -53,21 +53,10 @@ class _ProgressScreenState extends ConsumerState<ProgressScreen> {
                   horizontal: Space.gutter,
                   vertical: Space.xs,
                 ),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: SegmentedButton<_View>(
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(value: _View.trends, label: Text('Trends')),
-                      ButtonSegment(value: _View.photos, label: Text('Photos')),
-                      ButtonSegment(
-                        value: _View.insights,
-                        label: Text('Insights'),
-                      ),
-                    ],
-                    selected: {_view},
-                    onSelectionChanged: (s) => setState(() => _view = s.first),
-                  ),
+                child: TextTabs(
+                  labels: const ['Trends', 'Photos', 'Insights'],
+                  index: _view.index,
+                  onChanged: (i) => setState(() => _view = _View.values[i]),
                 ),
               ),
               Expanded(
@@ -179,23 +168,6 @@ class _TrendsState extends ConsumerState<_Trends> {
               clipData: const FlClipData.none(),
               gridData: const FlGridData(show: false),
               borderData: FlBorderData(show: false),
-              extraLinesData: ExtraLinesData(
-                horizontalLines: [
-                  HorizontalLine(
-                    y: firstV,
-                    color: c.inkFaint.withValues(alpha: 0.6),
-                    strokeWidth: 1,
-                    dashArray: const [3, 5],
-                    label: HorizontalLineLabel(
-                      show: true,
-                      alignment: Alignment.topRight,
-                      padding: const EdgeInsets.only(bottom: 4),
-                      style: context.text.labelSmall,
-                      labelResolver: (_) => 'Start',
-                    ),
-                  ),
-                ],
-              ),
               titlesData: FlTitlesData(
                 topTitles: const AxisTitles(),
                 rightTitles: const AxisTitles(),
@@ -225,7 +197,6 @@ class _TrendsState extends ConsumerState<_Trends> {
                       FlLine(
                         color: c.ink.withValues(alpha: 0.25),
                         strokeWidth: 1,
-                        dashArray: const [3, 3],
                       ),
                       FlDotData(
                         getDotPainter: (_, _, _, _) => FlDotCirclePainter(

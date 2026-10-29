@@ -59,11 +59,6 @@ class ProgressProofSection extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Eyebrow('Measured since day 1 · ${proof.days} days'),
-          const SizedBox(height: 4),
-          Text(
-            'From your photos\' pixels, not just the AI score.',
-            style: context.text.bodyMedium,
-          ),
           const SizedBox(height: Space.sm),
           for (final (i, ch) in rows.indexed)
             Container(

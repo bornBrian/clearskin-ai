@@ -23,7 +23,7 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
     'Why am I breaking out on my chin?',
     'Can I use vitamin C and retinol together?',
     'How do I fade dark marks faster?',
-    'What sunscreen won\'t leave a white cast?',
+    'Which sunscreen won\'t leave a white cast?',
     'Is my routine too harsh?',
   ];
 
@@ -94,38 +94,45 @@ class _CoachScreenState extends ConsumerState<CoachScreen> {
                 ? ListView(
                     padding: const EdgeInsets.all(Space.gutter),
                     children: [
-                      Icon(
-                        Icons.chat_bubble_rounded,
-                        color: c.primary,
-                        size: 36,
-                      ),
-                      const SizedBox(height: Space.md),
                       Text(
-                        'Ask me anything about your skin',
-                        style: context.text.headlineSmall,
+                        'Ask about\nyour skin.',
+                        style: context.text.displaySmall?.copyWith(
+                          fontWeight: FontWeight.w300,
+                          height: 1.1,
+                        ),
                       ),
-                      const SizedBox(height: Space.xs),
+                      const SizedBox(height: Space.sm),
                       Text(
-                        'I know your skin profile, your latest scan, your routine and your shelf, so answers are about you — not generic advice.',
-                        style: context.text.bodyMedium,
+                        'Knows your scans, routine and shelf.',
+                        style: context.text.bodyLarge?.copyWith(
+                          color: c.inkMuted,
+                        ),
                       ),
-                      const SizedBox(height: Space.lg),
-                      for (final s in _suggestions)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: Space.xs),
-                          child: AppCard(
-                            onTap: () => _send(s),
+                      const SizedBox(height: Space.xl),
+                      // Questions as a hairline list, not prompt bubbles.
+                      for (final (i, s) in _suggestions.indexed)
+                        InkWell(
+                          onTap: () => _send(s),
+                          child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: Space.md,
-                              vertical: Space.sm,
+                              vertical: Space.md,
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                top: i == 0
+                                    ? BorderSide(color: c.line)
+                                    : BorderSide.none,
+                                bottom: BorderSide(color: c.line),
+                              ),
                             ),
                             child: Row(
                               children: [
                                 Expanded(
                                   child: Text(s, style: context.text.bodyLarge),
                                 ),
+                                const SizedBox(width: Space.sm),
                                 Icon(
-                                  Icons.north_east_rounded,
+                                  Icons.arrow_forward_rounded,
                                   size: 18,
                                   color: c.inkFaint,
                                 ),

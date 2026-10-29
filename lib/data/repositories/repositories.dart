@@ -68,6 +68,9 @@ abstract final class KvKeys {
   static const accountStatus = 'account_status_v1';
   static const streakCelebrated = 'streak_celebrated_day';
 
+  /// Setup answers so far, so a closed app resumes at the same question.
+  static const onboardingDraft = 'onboarding_draft_v1';
+
   /// Version of the medical disclaimer the person accepted. Bump
   /// [MedicalDisclaimer.version] when the wording changes materially.
   static const disclaimerAccepted = 'medical_disclaimer_v';

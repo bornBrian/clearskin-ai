@@ -511,24 +511,6 @@ class _Hero extends StatelessWidget {
                     ),
                   ],
                 ),
-                // Sample analyses (no AI key yet) never pass as real ones.
-                if (a.model == 'demo') ...[
-                  const SizedBox(height: Space.xs),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: Space.sm,
-                      vertical: Space.xxs,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(Radii.pill),
-                      border: Border.all(color: cream.withValues(alpha: 0.4)),
-                    ),
-                    child: Eyebrow(
-                      'Sample result · preview build',
-                      color: cream.withValues(alpha: 0.8),
-                    ),
-                  ),
-                ],
                 const SizedBox(height: Space.lg),
                 ScoreDial(
                   score: a.overallScore,

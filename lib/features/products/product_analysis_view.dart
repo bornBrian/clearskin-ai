@@ -24,48 +24,45 @@ class ProductAnalysisView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppCard(
-          color: color.withValues(alpha: 0.08),
-          borderColor: color.withValues(alpha: 0.5),
-          child: Row(
-            children: [
-              if (a.verdict != Verdict.unknown)
-                SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        value: a.fitScore / 100,
-                        strokeWidth: 5,
-                        color: color,
-                        backgroundColor: c.surfaceAlt,
-                      ),
-                      Text('${a.fitScore}', style: context.text.titleMedium),
-                    ],
-                  ),
-                ),
-              const SizedBox(width: Space.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      a.verdict.label,
-                      style: context.text.titleLarge?.copyWith(color: color),
-                    ),
-                    Text(
-                      a.verdict == Verdict.unknown
-                          ? 'We recognised only ${a.recognizedCount} ingredients. Check the list is complete.'
-                          : 'For your skin, based on ${a.recognizedCount} recognised ingredients.',
-                      style: context.text.bodySmall,
-                    ),
-                  ],
+        // The fit as a big light number beside a word: no tinted card, no
+        // ring.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (a.verdict != Verdict.unknown) ...[
+              Text(
+                '${a.fitScore}',
+                style: context.text.displayMedium?.copyWith(
+                  fontWeight: FontWeight.w200,
+                  height: 1,
                 ),
               ),
+              const SizedBox(width: Space.md),
             ],
-          ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    a.verdict.label,
+                    style: context.text.titleLarge?.copyWith(
+                      color:
+                          a.verdict == Verdict.avoid ||
+                              a.verdict == Verdict.caution
+                          ? color
+                          : c.ink,
+                    ),
+                  ),
+                  Text(
+                    a.verdict == Verdict.unknown
+                        ? 'Only ${a.recognizedCount} ingredients recognised.'
+                        : 'For your skin · ${a.recognizedCount} ingredients read',
+                    style: context.text.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         if (a.highlights.isNotEmpty) ...[
           const SizedBox(height: Space.md),
@@ -77,7 +74,7 @@ class ProductAnalysisView extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.check_circle_rounded, color: c.good, size: 18),
+                  Icon(Icons.check_rounded, color: c.ink, size: 18),
                   const SizedBox(width: Space.xs),
                   Expanded(
                     child: Text.rich(

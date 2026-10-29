@@ -105,31 +105,22 @@ class ProductDetailScreen extends ConsumerWidget {
             ),
             const SizedBox(height: Space.md),
           ],
-          SegmentedButton<ProductStatus>(
-            showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(value: ProductStatus.active, label: Text('In use')),
-              ButtonSegment(value: ProductStatus.paused, label: Text('Paused')),
-              ButtonSegment(
-                value: ProductStatus.finished,
-                label: Text('Finished'),
-              ),
-            ],
-            selected: {product.status},
-            onSelectionChanged: (s) =>
-                update(product.copyWith(status: s.first)),
+          TextTabs(
+            labels: const ['In use', 'Paused', 'Finished'],
+            index: product.status.index,
+            style: context.text.titleMedium,
+            onChanged: (i) =>
+                update(product.copyWith(status: ProductStatus.values[i])),
           ),
-          const SizedBox(height: Space.sm),
-          DropdownButtonFormField<ProductUsage>(
-            initialValue: product.usage,
-            decoration: const InputDecoration(labelText: 'When do you use it?'),
-            items: [
-              for (final u in ProductUsage.values)
-                DropdownMenuItem(value: u, child: Text(u.label)),
-            ],
-            onChanged: (v) {
-              if (v != null) update(product.copyWith(usage: v));
-            },
+          const SizedBox(height: Space.lg),
+          const Eyebrow('When'),
+          const SizedBox(height: Space.xs),
+          TextTabs(
+            labels: const ['Morning', 'Night', 'Both', 'Sometimes'],
+            index: product.usage.index,
+            style: context.text.titleMedium,
+            onChanged: (i) =>
+                update(product.copyWith(usage: ProductUsage.values[i])),
           ),
           const SizedBox(height: Space.md),
           _ShelfLifeRow(

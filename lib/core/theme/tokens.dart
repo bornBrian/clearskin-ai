@@ -196,14 +196,12 @@ abstract final class Space {
   /// Horizontal page gutter.
   static const gutter = 20.0;
 
-  /// Floating nav bar: height and gap to the bottom safe area.
+  /// Bottom nav bar height (above the system inset).
   static const navHeight = 64.0;
-  static const navBottomGap = 12.0;
 
-  /// Bottom padding so the last item of a tab scrolls fully clear of the
-  /// floating nav bar on every device (gesture bar, 3-button nav, notch).
-  static double navClearance(BuildContext context) =>
-      MediaQuery.paddingOf(context).bottom + navHeight + navBottomGap + xl;
+  /// Breathing room under the last item of a tab. The nav bar sits below
+  /// the content, never over it.
+  static double navClearance(BuildContext context) => xl;
 }
 
 /// Brand colours from the logo. Used for the mark, splash and dark hero

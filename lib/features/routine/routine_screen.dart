@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/utils/dates.dart';
+import '../../core/utils/text.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models/check_in.dart';
 import '../../data/repositories/repositories.dart';
@@ -241,13 +242,8 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
               ],
               if (habits.isNotEmpty) ...[
                 const SizedBox(height: Space.xl),
-                const Eyebrow('Beyond products'),
+                const Eyebrow('Habits'),
                 const SizedBox(height: Space.xs),
-                Text(
-                  'What helps your skin besides what you put on it.',
-                  style: context.text.bodyMedium,
-                ),
-                const SizedBox(height: Space.sm),
                 for (var i = 0; i < habits.length; i++)
                   _HabitRow(
                     n: i + 1,
@@ -465,11 +461,10 @@ class _HabitRow extends StatelessWidget {
               children: [
                 Text(habit.title, style: context.text.titleSmall),
                 const SizedBox(height: 2),
-                Text(habit.detail, style: context.text.bodyMedium),
-                const SizedBox(height: 4),
+                // One sentence: the why, not an essay.
                 Text(
-                  habit.evidence.label,
-                  style: context.text.labelSmall?.copyWith(color: c.inkFaint),
+                  firstSentence(habit.detail),
+                  style: context.text.bodyMedium,
                 ),
               ],
             ),
@@ -594,9 +589,9 @@ class _StepSheet extends StatelessWidget {
           const SizedBox(height: Space.lg),
           Divider(color: c.line),
           const SizedBox(height: Space.lg),
-          block('Why', step.why),
-          block('How', step.howTo),
-          const Eyebrow('Step by step'),
+          // The why in one sentence; the how lives in the table below.
+          block('Why', firstSentence(step.why)),
+          const Eyebrow('How'),
           const SizedBox(height: 6),
           _GuideTable(guide: ApplicationGuide.forStep(step)),
           const SizedBox(height: Space.lg),
