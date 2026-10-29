@@ -1,0 +1,83 @@
+{
+  "serum": {
+    "at": 10,
+    "end": 45,
+    "seconds": 0.35,
+    "file": "vo/Measured/serum.wav"
+  },
+  "toner": {
+    "at": 48,
+    "end": 68,
+    "seconds": 1.605,
+    "file": "vo/Measured/toner.wav"
+  },
+  "tenstep": {
+    "at": 72,
+    "end": 110,
+    "seconds": 2.402,
+    "file": "vo/Measured/tenstep.wav"
+  },
+  "guessing": {
+    "at": 121,
+    "end": 148,
+    "seconds": 4.033,
+    "file": "vo/Measured/guessing.wav"
+  },
+  "meet": {
+    "at": 165,
+    "end": 207,
+    "seconds": 5.485,
+    "file": "vo/Measured/meet.wav"
+  },
+  "scan": {
+    "at": 221,
+    "end": 257,
+    "seconds": 7.351,
+    "file": "vo/Measured/scan.wav"
+  },
+  "nine": {
+    "at": 260,
+    "end": 306,
+    "seconds": 8.674,
+    "file": "vo/Measured/nine.wav"
+  },
+  "routine": {
+    "at": 320,
+    "end": 365,
+    "seconds": 10.657,
+    "file": "vo/Measured/routine.wav"
+  },
+  "change": {
+    "at": 377,
+    "end": 431,
+    "seconds": 12.57,
+    "file": "vo/Measured/change.wav"
+  },
+  "every1": {
+    "at": 446,
+    "end": 472,
+    "seconds": 14.878,
+    "file": "vo/Measured/every1.wav"
+  },
+  "every2": {
+    "at": 475,
+    "end": 498,
+    "seconds": 15.821,
+    "file": "vo/Measured/every2.wav"
+  },
+  "every3": {
+    "at": 500,
+    "end": 524,
+    "seconds": 16.667,
+    "file": "vo/Measured/every3.wav"
+  },
+  "brand": {
+    "at": 542,
+    "end": 616,
+    "seconds": 18.056,
+    "file": "vo/Measured/brand.wav"
+  },
+  "_end": {
+    "at": 658
+  }
+}

@@ -1,0 +1,415 @@
+{
+  "voice": {
+    "name": "af_heart",
+    "speed": 0.94,
+    "lead": 0.35,
+    "lines": [
+      {
+        "id": "serum",
+        "text": "You've tried the serum.",
+        "pause": 0.12
+      },
+      {
+        "id": "toner",
+        "text": "The toner.",
+        "pause": 0.12
+      },
+      {
+        "id": "tenstep",
+        "text": "The ten-step routine.",
+        "pause": 0.35
+      },
+      {
+        "id": "guessing",
+        "text": "Still guessing?",
+        "pause": 0.55
+      },
+      {
+        "id": "meet",
+        "text": "Meet ClearSkin AI.",
+        "pause": 0.45
+      },
+      {
+        "id": "scan",
+        "text": "One scan of your face,",
+        "pause": 0.1
+      },
+      {
+        "id": "nine",
+        "text": "nine measurements of your skin.",
+        "pause": 0.45
+      },
+      {
+        "id": "routine",
+        "text": "A routine built around it.",
+        "pause": 0.4
+      },
+      {
+        "id": "change",
+        "text": "Then see what's actually changing.",
+        "pause": 0.5
+      },
+      {
+        "id": "every1",
+        "text": "Every scan.",
+        "pause": 0.08
+      },
+      {
+        "id": "every2",
+        "text": "Every step.",
+        "pause": 0.08
+      },
+      {
+        "id": "every3",
+        "text": "Every week.",
+        "pause": 0.6
+      },
+      {
+        "id": "brand",
+        "text": "ClearSkin AI. Your skin, measured.",
+        "pause": 1.4
+      }
+    ]
+  },
+  "bpm": 120,
+  "beats": 44,
+  "tail": 0.5,
+  "music_gain": -6,
+  "bars": [
+    "Fmaj7",
+    "Am7",
+    "Cadd9",
+    "Gsus4",
+    "Fmaj7",
+    "Am7",
+    "Cadd9",
+    "G",
+    "Fmaj7",
+    "Am7",
+    "Csus2",
+    "Csus2"
+  ],
+  "sections": [
+    {
+      "from": 0,
+      "to": 8.067,
+      "pad": 0.55,
+      "pluck": 0.25,
+      "cutoff": [
+        350,
+        900
+      ]
+    },
+    {
+      "from": 8.067,
+      "to": 11.0,
+      "pad": 0.45,
+      "cutoff": [
+        900,
+        260
+      ]
+    },
+    {
+      "from": 11.0,
+      "to": 29.733,
+      "pad": 0.55,
+      "pluck": 0.55,
+      "bass": 0.7,
+      "kick": 0.85,
+      "hat": 0.55,
+      "clap": 0.45,
+      "cutoff": [
+        1600,
+        3200
+      ]
+    },
+    {
+      "from": 29.733,
+      "to": 36.267,
+      "pad": 0.6,
+      "bass": 0.6,
+      "kick": 1,
+      "hat": 0.3,
+      "cutoff": [
+        2600,
+        2600
+      ]
+    }
+  ],
+  "gaps": [
+    [
+      36.267,
+      44
+    ]
+  ],
+  "cues": [
+    {
+      "beat": 0.533,
+      "sfx": "whoosh",
+      "gain": -9,
+      "seconds": 0.6
+    },
+    {
+      "beat": 3.067,
+      "sfx": "whoosh",
+      "gain": -9,
+      "seconds": 0.6,
+      "pan": [
+        0.7,
+        -0.7
+      ]
+    },
+    {
+      "beat": 4.8,
+      "sfx": "hit",
+      "gain": -9
+    },
+    {
+      "beat": 4.933,
+      "sfx": "pop",
+      "gain": -13
+    },
+    {
+      "beat": 5.0,
+      "sfx": "pop",
+      "gain": -13
+    },
+    {
+      "beat": 5.067,
+      "sfx": "pop",
+      "gain": -13
+    },
+    {
+      "beat": 5.133,
+      "sfx": "pop",
+      "gain": -13
+    },
+    {
+      "beat": 5.2,
+      "sfx": "pop",
+      "gain": -13
+    },
+    {
+      "beat": 5.267,
+      "sfx": "pop",
+      "gain": -13
+    },
+    {
+      "beat": 5.333,
+      "sfx": "pop",
+      "gain": -13
+    },
+    {
+      "beat": 9.267,
+      "sfx": "whoosh",
+      "gain": -8,
+      "seconds": 1.2,
+      "up": false
+    },
+    {
+      "beat": 11.0,
+      "sfx": "riser",
+      "gain": -9,
+      "seconds": 1.4
+    },
+    {
+      "beat": 11.0,
+      "sfx": "impact",
+      "gain": -7,
+      "big": 0.6
+    },
+    {
+      "beat": 11.533,
+      "sfx": "shimmer",
+      "gain": -12
+    },
+    {
+      "beat": 11.667,
+      "sfx": "pop",
+      "gain": -15
+    },
+    {
+      "beat": 11.867,
+      "sfx": "pop",
+      "gain": -15
+    },
+    {
+      "beat": 12.067,
+      "sfx": "pop",
+      "gain": -15
+    },
+    {
+      "beat": 12.267,
+      "sfx": "pop",
+      "gain": -15
+    },
+    {
+      "beat": 15.0,
+      "sfx": "whoosh",
+      "gain": -9,
+      "seconds": 0.7
+    },
+    {
+      "beat": 17.2,
+      "sfx": "swell",
+      "gain": -15,
+      "seconds": 1.0
+    },
+    {
+      "beat": 17.067,
+      "sfx": "ding",
+      "gain": -10
+    },
+    {
+      "beat": 17.734,
+      "sfx": "tick",
+      "gain": -12
+    },
+    {
+      "beat": 17.867,
+      "sfx": "tick",
+      "gain": -12
+    },
+    {
+      "beat": 18.0,
+      "sfx": "tick",
+      "gain": -12
+    },
+    {
+      "beat": 18.134,
+      "sfx": "tick",
+      "gain": -12
+    },
+    {
+      "beat": 18.267,
+      "sfx": "tick",
+      "gain": -12
+    },
+    {
+      "beat": 18.4,
+      "sfx": "tick",
+      "gain": -12
+    },
+    {
+      "beat": 18.534,
+      "sfx": "tick",
+      "gain": -12
+    },
+    {
+      "beat": 18.667,
+      "sfx": "tick",
+      "gain": -12
+    },
+    {
+      "beat": 18.8,
+      "sfx": "tick",
+      "gain": -12
+    },
+    {
+      "beat": 21.6,
+      "sfx": "whoosh",
+      "gain": -10,
+      "seconds": 0.6
+    },
+    {
+      "beat": 22.133,
+      "sfx": "snap",
+      "gain": -10
+    },
+    {
+      "beat": 22.133,
+      "sfx": "pop",
+      "gain": -15
+    },
+    {
+      "beat": 22.6,
+      "sfx": "snap",
+      "gain": -10
+    },
+    {
+      "beat": 22.6,
+      "sfx": "pop",
+      "gain": -15
+    },
+    {
+      "beat": 23.067,
+      "sfx": "snap",
+      "gain": -10
+    },
+    {
+      "beat": 23.067,
+      "sfx": "pop",
+      "gain": -15
+    },
+    {
+      "beat": 23.533,
+      "sfx": "snap",
+      "gain": -10
+    },
+    {
+      "beat": 23.533,
+      "sfx": "pop",
+      "gain": -15
+    },
+    {
+      "beat": 25.4,
+      "sfx": "whoosh",
+      "gain": -10,
+      "seconds": 0.6,
+      "pan": [
+        0.7,
+        -0.7
+      ]
+    },
+    {
+      "beat": 27.667,
+      "sfx": "riser",
+      "gain": -15,
+      "seconds": 1.0
+    },
+    {
+      "beat": 27.533,
+      "sfx": "ding",
+      "gain": -10
+    },
+    {
+      "beat": 29.733,
+      "sfx": "impact",
+      "gain": -5,
+      "big": 0.45
+    },
+    {
+      "beat": 31.667,
+      "sfx": "impact",
+      "gain": -5,
+      "big": 0.5
+    },
+    {
+      "beat": 33.333,
+      "sfx": "impact",
+      "gain": -5,
+      "big": 0.75
+    },
+    {
+      "beat": 33.333,
+      "sfx": "sub",
+      "gain": -7
+    },
+    {
+      "beat": 36.267,
+      "sfx": "impact",
+      "gain": -3,
+      "big": 1.0
+    },
+    {
+      "beat": 36.267,
+      "sfx": "sub",
+      "gain": -5
+    },
+    {
+      "beat": 37.067,
+      "sfx": "shimmer",
+      "gain": -10
+    }
+  ]
+}

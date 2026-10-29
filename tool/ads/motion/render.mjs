@@ -11,7 +11,7 @@
 // each post's caption is printed after rendering.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -29,7 +29,28 @@ const ADS = {
   Clash: { file: "clearskin-ad-09-products-fighting", score: true },
   Working: { file: "clearskin-ad-10-is-it-working", score: true },
   Explained: { file: "clearskin-ad-11-skin-explained", score: true },
+  Measured: { file: "clearskin-ad-12-measured", score: true, vo: true },
 };
+
+/**
+ * Lays each voice line (src/sound/<Id>.timeline.json, made by voice.py) on
+ * its frame, then mixes it over [bed] with the bed ducking under the voice.
+ */
+function withVoice(id, bed, out) {
+  const timeline = JSON.parse(readFileSync(join(import.meta.dirname, "src/sound", `${id}.timeline.json`), "utf-8"));
+  const lines = Object.entries(timeline).filter(([k]) => !k.startsWith("_"));
+  const inputs = lines.flatMap(([, l]) => ["-i", join(import.meta.dirname, "public", l.file)]);
+  const placed = lines.map(([, l], i) => `[${i + 1}:a]aresample=48000,pan=stereo|c0=c0|c1=c0,adelay=${Math.round((l.at / 30) * 1000)}:all=1[v${i}]`);
+  const filter = [
+    ...placed,
+    `${lines.map((_, i) => `[v${i}]`).join("")}amix=inputs=${lines.length}:normalize=0,volume=2.2,highpass=f=80,acompressor=threshold=0.1:ratio=3:attack=5:release=120,apad=whole_dur=60[vo]`, // padded: filters stop at the shortest input
+    "[vo]asplit=2[vo1][vo2]",
+    "[0:a]volume=0.55[bed]",
+    "[bed][vo1]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=350[duck]",
+    "[duck][vo2]amix=inputs=2:normalize=0:duration=first[mix]",
+  ].join(";");
+  execFileSync("ffmpeg", ["-v", "error", "-y", "-i", bed, ...inputs, "-filter_complex", filter, "-map", "[mix]", "-ar", "48000", out], { stdio: "inherit" });
+}
 
 // Remotion's own headless browser, else Edge (always on Windows).
 const EDGE = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
@@ -43,7 +64,7 @@ for (const id of ids) {
   const silent = join(OUT, `${ad.file}-no-music.mp4`);
   execFileSync(
     process.execPath,
-    [CLI, "render", "src/index.ts", id, silent, "--codec=h264", "--crf=16", "--muted", "--concurrency=4", "--timeout=180000",
+    [CLI, "render", "src/index.ts", id, silent, "--codec=h264", "--crf=16", "--muted", "--concurrency=4", "--timeout=180000", "--gl=angle",
       ...(browser ? [`--browser-executable=${browser}`] : [])],
     { stdio: "inherit", cwd: import.meta.dirname },
   );
@@ -64,6 +85,15 @@ for (const id of ids) {
     const tmp = join(tmpdir(), `clearskin-${id}`);
     execFileSync("python", ["sound.py", spec, `${tmp}-score.wav`], { stdio: "inherit", cwd: import.meta.dirname });
     execFileSync("python", ["sound.py", spec, `${tmp}-sfx.wav`, "--sfx-only"], { stdio: "inherit", cwd: import.meta.dirname });
+    if (ad.vo) {
+      withVoice(id, `${tmp}-score.wav`, `${tmp}-score-vo.wav`);
+      withVoice(id, `${tmp}-sfx.wav`, `${tmp}-sfx-vo.wav`);
+      mux(`${tmp}-score-vo.wav`, join(OUT, `${ad.file}.mp4`));
+      mux(`${tmp}-sfx-vo.wav`, join(OUT, `${ad.file}-sfx-only.mp4`), [], -16);
+      rmSync(silent, { force: true });
+      console.log(`\n${join(OUT, `${ad.file}.mp4`)}\nOriginal score, sound design and voice (Kokoro, Apache 2.0): no credit needed.\n`);
+      continue;
+    }
     mux(`${tmp}-score.wav`, join(OUT, `${ad.file}.mp4`));
     // quieter, so a sound added in the app sits on top
     mux(`${tmp}-sfx.wav`, join(OUT, `${ad.file}-sfx-only.mp4`), [], -20);

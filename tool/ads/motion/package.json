@@ -7,12 +7,17 @@
     "render": "node render.mjs"
   },
   "dependencies": {
+    "@react-three/drei": "10.0.6",
+    "@react-three/fiber": "9.1.2",
     "@remotion/cli": "4.0.534",
     "@remotion/motion-blur": "^4.0.534",
     "@remotion/noise": "^4.0.534",
+    "@remotion/three": "4.0.534",
+    "@types/three": "0.170.0",
     "react": "19.1.1",
     "react-dom": "19.1.1",
-    "remotion": "4.0.534"
+    "remotion": "4.0.534",
+    "three": "0.170.0"
   },
   "devDependencies": {
     "@types/react": "19.1.12",
