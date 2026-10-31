@@ -29,8 +29,14 @@ import '../domain/routine/routine_engine.dart';
 /// Every notification carries the route it should open as its payload, so
 /// tapping "Morning, Sam" lands on the morning checklist, not the home tab.
 ///
-/// Inexact scheduling on Android, so no exact-alarm permission is needed
-/// (Play restricts that permission to alarm apps).
+/// Inexact scheduling on Android by default. With "ring like an alarm" on,
+/// the routine reminders use the alarm tone and volume, keep ringing until
+/// answered or snoozed, and fire on the minute when the person has allowed
+/// exact alarms (SCHEDULE_EXACT_ALARM, which they grant themselves; never the
+/// Play-restricted USE_EXACT_ALARM or full-screen intents).
+///
+/// Before the first scan there is no routine, so the morning reminder asks
+/// for the scan instead.
 class NotificationService {
   final _plugin = FlutterLocalNotificationsPlugin();
   bool _ready = false;
@@ -48,6 +54,8 @@ class NotificationService {
   static const _renewalBaseId = 210; // +0..4
   static const _milestoneBaseId = 310; // +0..2
   static const _expiryBaseId = 400; // +0..19
+  static const _snoozeId = 500;
+  static const snoozeMinutes = 10;
 
   final _taps = StreamController<String>.broadcast();
 
@@ -130,6 +138,39 @@ class NotificationService {
     'clearskin_chime',
   );
 
+  /// The phone's own alarm tone on the alarm stream, repeating until the
+  /// person answers (FLAG_INSISTENT), with Snooze and Open on it.
+  static final alarmDetails = NotificationDetails(
+    android: AndroidNotificationDetails(
+      'routine_alarm_v1',
+      'Routine alarms',
+      channelDescription: 'Morning and evening routine, ringing like an alarm',
+      importance: Importance.max,
+      priority: Priority.max,
+      category: AndroidNotificationCategory.alarm,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+      sound: const UriAndroidNotificationSound(
+        'content://settings/system/alarm_alert',
+      ),
+      vibrationPattern: Int64List.fromList([0, 900, 700, 900, 700, 900]),
+      additionalFlags: Int32List.fromList([4]),
+      visibility: NotificationVisibility.public,
+      timeoutAfter: 5 * 60 * 1000,
+      actions: const [
+        AndroidNotificationAction('snooze', 'Snooze $snoozeMinutes min'),
+        AndroidNotificationAction(
+          'open',
+          'Open routine',
+          showsUserInterface: true,
+        ),
+      ],
+    ),
+    iOS: const DarwinNotificationDetails(
+      sound: 'clearskin_morning.wav',
+      interruptionLevel: InterruptionLevel.timeSensitive,
+    ),
+  );
+
   static const _retiredChannels = [
     'routine_reminders',
     'smart_alerts',
@@ -156,9 +197,15 @@ class NotificationService {
         ),
       ),
       onDidReceiveNotificationResponse: (r) {
+        if (r.actionId == 'snooze') {
+          unawaited(snooze(_plugin, r.payload));
+          return;
+        }
         final route = _route(r.payload);
         if (route != null) _taps.add(route);
       },
+      onDidReceiveBackgroundNotificationResponse:
+          notificationActionInBackground,
     );
     final android = _plugin
         .resolvePlatformSpecificImplementation<
@@ -199,6 +246,53 @@ class NotificationService {
           false;
     }
     return false;
+  }
+
+  /// Whether reminders can fire on the exact minute (Android 12+ asks the
+  /// person; older versions and iOS always can).
+  Future<bool> canRingOnTime() async {
+    await init();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    return await android?.canScheduleExactNotifications() ?? true;
+  }
+
+  /// Opens Android's "Alarms & reminders" switch for this app.
+  Future<bool> requestRingOnTime() async {
+    await init();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    return await android?.requestExactAlarmsPermission() ?? true;
+  }
+
+  /// Rings again in [snoozeMinutes], opening [payload] when tapped. Runs in
+  /// the background isolate too, so it takes the plugin it's given.
+  static Future<void> snooze(
+    FlutterLocalNotificationsPlugin plugin,
+    String? payload,
+  ) async {
+    final at = tz.TZDateTime.now(tz.UTC)
+        .add(const Duration(minutes: snoozeMinutes));
+    final android = plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    final exact = await android?.canScheduleExactNotifications() ?? false;
+    await plugin.zonedSchedule(
+      id: _snoozeId,
+      scheduledDate: at,
+      notificationDetails: alarmDetails,
+      androidScheduleMode: exact
+          ? AndroidScheduleMode.alarmClock
+          : AndroidScheduleMode.inexactAllowWhileIdle,
+      title: 'Your routine',
+      body: 'Snoozed $snoozeMinutes minutes ago. Two minutes now.',
+      payload: payload,
+    );
   }
 
   Future<void> _routineQueue = Future.value();
@@ -243,14 +337,27 @@ class NotificationService {
     }
 
     final r = profile.reminders;
-    if (profile.remindersEnabled) {
+    if (profile.remindersEnabled && routine == null) {
+      // No routine before the first scan: ask for the scan instead.
+      await _at(
+        _amId,
+        profile.amReminder,
+        'Your routine starts with a scan',
+        'Front and both sides, under a minute. Then your plan is built.',
+        details: _general,
+        payload: '/scan',
+      );
+    } else if (profile.remindersEnabled) {
       final name = profile.firstName;
+      final alarm = r.alarm;
+      final onTime = alarm && await canRingOnTime();
       await _at(
         _amId,
         profile.amReminder,
         name.isEmpty ? 'Morning routine' : 'Morning, $name',
         'Two minutes. Finish with SPF.',
-        details: _morning,
+        details: alarm ? alarmDetails : _morning,
+        exact: onTime,
         skipToday: amDoneToday,
         payload: '/routine?slot=am',
       );
@@ -262,7 +369,8 @@ class NotificationService {
           title,
           body,
           weekday: weekday,
-          details: _evening,
+          details: alarm ? alarmDetails : _evening,
+          exact: onTime,
           skipToday: pmDoneToday,
           payload: '/routine?slot=pm',
         );
@@ -508,6 +616,7 @@ class NotificationService {
     required NotificationDetails details,
     int? weekday,
     bool skipToday = false,
+    bool exact = false,
     String? payload,
   }) async {
     // Wall-clock components in the reminder's zone, compared as such.
@@ -530,7 +639,9 @@ class NotificationService {
         first.minute,
       ),
       notificationDetails: details,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      androidScheduleMode: exact
+          ? AndroidScheduleMode.alarmClock
+          : AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: weekday == null
           ? DateTimeComponents.time
           : DateTimeComponents.dayOfWeekAndTime,
@@ -539,4 +650,19 @@ class NotificationService {
       payload: payload,
     );
   }
+}
+
+/// Notification buttons pressed while the app isn't running ("Snooze").
+@pragma('vm:entry-point')
+Future<void> notificationActionInBackground(NotificationResponse r) async {
+  if (r.actionId != 'snooze') return;
+  tzdata.initializeTimeZones();
+  final plugin = FlutterLocalNotificationsPlugin();
+  await plugin.initialize(
+    settings: const InitializationSettings(
+      android: AndroidInitializationSettings('@drawable/ic_stat_clearskin'),
+      iOS: DarwinInitializationSettings(),
+    ),
+  );
+  await NotificationService.snooze(plugin, r.payload);
 }
