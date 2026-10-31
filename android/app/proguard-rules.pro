@@ -9,5 +9,10 @@
 # Flutter deferred components / Play Core (not used, referenced by the engine).
 -dontwarn com.google.android.play.core.**
 
+# Room builds its databases by reflection (<Name>_Impl). Without this, R8
+# strips WorkManager's WorkDatabase_Impl (pulled in by the ads SDK) and the
+# release build crashes on launch.
+-keep class * extends androidx.room.RoomDatabase { <init>(); }
+
 # RevenueCat models are serialized reflectively.
 -keep class com.revenuecat.purchases.** { *; }
