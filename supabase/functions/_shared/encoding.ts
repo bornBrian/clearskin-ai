@@ -196,3 +196,22 @@ export function ecdsaDerToRaw(der: Uint8Array, size: number): Uint8Array<ArrayBu
   });
   return raw;
 }
+
+/** Whether base64 [b64] starts with the file signature of [type]. */
+export function imageIs(b64: string, type: "image/jpeg" | "image/png" | "image/webp"): boolean {
+  let head: Uint8Array;
+  try {
+    head = Uint8Array.from(atob(b64.slice(0, 16)), (c) => c.charCodeAt(0)); // 12 bytes
+  } catch {
+    return false;
+  }
+  const at = (i: number, bytes: number[]) => bytes.every((b, k) => head[i + k] === b);
+  switch (type) {
+    case "image/jpeg":
+      return at(0, [0xff, 0xd8, 0xff]);
+    case "image/png":
+      return at(0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    case "image/webp":
+      return at(0, [0x52, 0x49, 0x46, 0x46]) && at(8, [0x57, 0x45, 0x42, 0x50]); // RIFF....WEBP
+  }
+}

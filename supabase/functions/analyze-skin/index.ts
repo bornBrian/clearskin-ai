@@ -11,6 +11,7 @@
 
 import { z } from "npm:zod@4.6.7";
 import { analyzeImages } from "../_shared/ai.ts";
+import { imageIs } from "../_shared/encoding.ts";
 import {
   allInOrder,
   deviceHash,
@@ -33,6 +34,7 @@ import { ANALYSIS_SCHEMA, ANALYSIS_SYSTEM_PROMPT, DISCLAIMER, ISSUE_KEYS, METRIC
 // of them. Anything far above that didn't come from the app.
 const MAX_BODY_BYTES = 3_000_000;
 const MAX_IMAGE_BYTES = 800_000;
+
 const BASE64 = /^[A-Za-z0-9+/=]+$/;
 
 const ProfileValue = z.union([
@@ -121,6 +123,14 @@ Deno.serve(async (req) => {
     // base64 is ~4/3 the binary size.
     if ([body.image_base64, ...body.side_images].some((b) => (b.length * 3) / 4 > MAX_IMAGE_BYTES)) {
       throw new HttpError(413, "bad_image", "That photo is too large. Please retake it.");
+    }
+    // The bytes must be the image they claim to be, so nothing else is
+    // passed (and paid for) as a "photo".
+    if (
+      !imageIs(body.image_base64, body.media_type) ||
+      body.side_images.some((b) => !imageIs(b, "image/jpeg"))
+    ) {
+      throw new HttpError(400, "bad_image", "That photo couldn't be read. Please retake it.");
     }
 
     // ── Quotas (reserved atomically, before any money is spent) ────────

@@ -12,6 +12,7 @@ import 'core/providers.dart';
 import 'data/db/app_database.dart';
 import 'data/repositories/repositories.dart';
 import 'services/notification_service.dart';
+import 'services/secure_session_storage.dart';
 import 'services/purchases_service.dart';
 import 'services/telemetry.dart';
 
@@ -52,6 +53,13 @@ Future<void> main() async {
     await Supabase.initialize(
       url: Env.supabaseUrl,
       publishableKey: Env.supabasePublishableKey,
+      // The session lives in the Keystore/Keychain, not plain preferences.
+      authOptions: FlutterAuthClientOptions(
+        localStorage: SecureSessionStorage(
+          persistSessionKey:
+              'sb-${Uri.parse(Env.supabaseUrl).host.split('.').first}-auth-token',
+        ),
+      ),
     );
   }
 

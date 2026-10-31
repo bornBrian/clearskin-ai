@@ -231,7 +231,8 @@ _useRootForTests(fakeRoot.der);
 
 const U1 = "11111111-1111-4111-8111-111111111111";
 const DEVICE = "a".repeat(64);
-const IMG = "A".repeat(2000);
+// a JPEG header (FF D8 FF E0) then filler: passes the signature check
+const IMG = "/9j/4A" + "A".repeat(1994);
 
 function post(fn: string, body: unknown, headers: Record<string, string> = {}) {
   return new Request(`https://x/functions/v1/${fn}`, {
@@ -819,4 +820,24 @@ Deno.test("deleting an account revokes Sign in with Apple, even if Apple is down
 
 addEventListener("unload", () => {
   globalThis.fetch = realFetch;
+});
+
+Deno.test("a photo must be the image type it claims", async () => {
+  const { imageIs } = await import("../_shared/encoding.ts");
+  const b64 = (bytes: number[]) => btoa(String.fromCharCode(...bytes, ...new Array(16).fill(0)));
+  const jpeg = b64([0xff, 0xd8, 0xff, 0xe0]);
+  const png = b64([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const webp = b64([0x52, 0x49, 0x46, 0x46, 1, 2, 3, 4, 0x57, 0x45, 0x42, 0x50]);
+  if (!imageIs(jpeg, "image/jpeg") || !imageIs(png, "image/png") || !imageIs(webp, "image/webp")) {
+    throw new Error("real images rejected");
+  }
+  for (const [data, type] of [
+    [png, "image/jpeg"],
+    [jpeg, "image/png"],
+    [b64([0x25, 0x50, 0x44, 0x46]), "image/jpeg"], // a PDF labelled as a photo
+    [b64([0x4d, 0x5a]), "image/webp"], // a Windows program
+    ["!!not base64!!", "image/jpeg"],
+  ] as const) {
+    if (imageIs(data, type)) throw new Error(`accepted a fake ${type}`);
+  }
 });

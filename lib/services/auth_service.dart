@@ -65,6 +65,13 @@ class AuthService {
 
   bool _googleReady = false;
 
+  /// Google can only be set up once per app run, so one secure random
+  /// nonce serves the run: Google signs its hash into the ID token and
+  /// Supabase only accepts that token with this raw value, which never
+  /// leaves the app. A token stolen in transit or from a log can't be
+  /// replayed elsewhere.
+  final String _googleNonce = _nonce();
+
   /// Google sign-in needs its own iOS client; without one the button is
   /// hidden on iPhone rather than failing.
   static bool get googleAvailable =>
@@ -89,6 +96,7 @@ class AuthService {
       if (!_googleReady) {
         await GoogleSignIn.instance.initialize(
           serverClientId: Env.googleWebClientId,
+          nonce: sha256.convert(utf8.encode(_googleNonce)).toString(),
           clientId: Platform.isIOS && Env.googleIosClientId.isNotEmpty
               ? Env.googleIosClientId
               : null,
@@ -108,7 +116,7 @@ class AuthService {
       // A real Google identity, verified by Google. Without the backend
       // (local testing) there's no server account to attach it to yet.
       if (!Env.hasBackend) return await _save(account);
-      await _attach(OAuthProvider.google, idToken);
+      await _attach(OAuthProvider.google, idToken, nonce: _googleNonce);
       return await _save(account);
     } on GoogleSignInException catch (e) {
       if (e.code == GoogleSignInExceptionCode.canceled) {
