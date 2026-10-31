@@ -303,7 +303,7 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
     _backToCamera();
   }
 
-  /// Side photos make the report better but aren't required.
+  /// Side photos make the report better; only the first scan requires them.
   Future<void> _skipSides() async {
     await _guide?.stop();
     final front = _front;
@@ -540,7 +540,9 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
                       tooltip: 'Close',
                     ),
                     const Spacer(),
-                    if (_pose.isSide)
+                    // The first scan builds the routine, so it needs the
+                    // cheeks and jawline from both sides.
+                    if (_pose.isSide && ref.watch(latestScanProvider) != null)
                       TextButton(
                         onPressed: checking ? null : _skipSides,
                         style: TextButton.styleFrom(

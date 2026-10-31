@@ -73,6 +73,16 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
     if (mounted) context.pop();
   }
 
+  /// The first result is when the plan becomes real, so a free user sees
+  /// what Premium adds once, on the way to the routine built from it.
+  Future<void> _toRoutine({required bool first}) async {
+    if (first && widget.fresh && !ref.read(premiumProvider)) {
+      await context.push('/paywall?source=first_scan');
+      if (!mounted) return;
+    }
+    context.go('/routine');
+  }
+
   @override
   Widget build(BuildContext context) {
     final all = ref.watch(scansProvider).value ?? const <SkinScan>[];
@@ -276,9 +286,11 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
                   ],
                   const SizedBox(height: Space.xxl),
                   ArrowPill(
-                    label: 'See your updated routine',
+                    label: previous == null
+                        ? 'See my routine'
+                        : 'See your updated routine',
                     dark: true,
-                    onTap: () => context.go('/routine'),
+                    onTap: () => _toRoutine(first: previous == null),
                   ),
                 ].animate(interval: 30.ms).fadeIn(duration: Motion.normal),
               ),
@@ -512,14 +524,19 @@ class _Hero extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: Space.lg),
-                ScoreDial(
-                  score: a.overallScore,
-                  size: 236,
-                  color: cream,
-                  trackColor: cream.withValues(alpha: 0.16),
-                  textColor: cream,
-                  label: 'Skin score',
-                ).animate().fadeIn(duration: Motion.slow),
+                // Arrives from Today's dial (ScoreDial.flight).
+                Hero(
+                  tag: 'dial-${scan.id}',
+                  flightShuttleBuilder: ScoreDial.flight,
+                  child: ScoreDial(
+                    score: a.overallScore,
+                    size: 236,
+                    color: cream,
+                    trackColor: cream.withValues(alpha: 0.16),
+                    textColor: cream,
+                    label: 'Skin score',
+                  ),
+                ),
                 const SizedBox(height: Space.lg),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: Space.xl),
@@ -738,8 +755,8 @@ class _MetricCell extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '${metric.score}',
+                  CountUp(
+                    metric.score,
                     style: TextStyle(
                       fontFamily: kFontFamily,
                       fontSize: 38,

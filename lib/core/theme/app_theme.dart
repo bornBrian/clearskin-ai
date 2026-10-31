@@ -29,7 +29,10 @@ abstract final class AppTheme {
       colorScheme: scheme,
       fontFamily: kFontFamily,
       scaffoldBackgroundColor: c.background,
-      splashFactory: InkSparkle.splashFactory,
+      // Presses answer with a faint ink wash (and PressScale on the main
+      // controls), not the stock sparkle ripple.
+      splashFactory: NoSplash.splashFactory,
+      highlightColor: c.ink.withValues(alpha: 0.05),
       extensions: [c],
     );
 

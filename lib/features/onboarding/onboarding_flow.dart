@@ -298,10 +298,16 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       'has_city': profile.location != null,
     });
     t.track(Ev.planRevealView);
+    // Saving the profile moves the router on to Today, so keep the router
+    // to open the first scan from there: the routine is built from it.
+    final router = GoRouter.of(context);
     await context.push('/plan', extra: profile);
     if (!mounted) return;
     await ref.read(profileProvider.notifier).save(profile);
     await ref.read(kvProvider).remove(KvKeys.onboardingDraft);
+    router
+      ..go('/today')
+      ..push('/scan');
   }
 
   @override

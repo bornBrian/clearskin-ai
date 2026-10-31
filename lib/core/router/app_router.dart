@@ -9,6 +9,8 @@ import '../../features/checkin/checkin_screen.dart';
 import '../../features/coach/coach_screen.dart';
 import '../../features/home/today_screen.dart';
 import '../../features/journey/journey_screen.dart';
+import '../../features/guides/guides_screen.dart';
+import '../../features/guides/water_screen.dart';
 import '../../features/onboarding/medical_disclaimer_screen.dart';
 import '../../features/onboarding/onboarding_flow.dart';
 import '../../features/onboarding/plan_reveal_screen.dart';
@@ -209,6 +211,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootKey,
         builder: (_, state) =>
             ProductDetailScreen(productId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/guides',
+        parentNavigatorKey: _rootKey,
+        builder: (_, _) => const GuidesScreen(),
+      ),
+      GoRoute(
+        path: '/guide/:id',
+        parentNavigatorKey: _rootKey,
+        builder: (_, state) =>
+            GuideScreen(guideId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/water',
+        parentNavigatorKey: _rootKey,
+        builder: (_, _) => const WaterScreen(),
       ),
       GoRoute(
         path: '/tip/:id',

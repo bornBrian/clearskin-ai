@@ -68,6 +68,12 @@ abstract final class KvKeys {
   static const accountStatus = 'account_status_v1';
   static const streakCelebrated = 'streak_celebrated_day';
 
+  /// Body size and activity for the water target (HydrationSettings).
+  static const hydration = 'hydration_v1';
+
+  /// + yyyy-MM-dd: glasses of water logged that day.
+  static const waterPrefix = 'water_';
+
   /// Setup answers so far, so a closed app resumes at the same question.
   static const onboardingDraft = 'onboarding_draft_v1';
 

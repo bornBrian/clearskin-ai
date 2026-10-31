@@ -21,6 +21,7 @@ import '../../domain/routine/streaks.dart';
 import '../../domain/shop/shop_links.dart';
 import '../../services/telemetry.dart';
 import '../ads/ad_banner.dart';
+import '../scan/first_scan_card.dart';
 import '../shop/shop_link.dart';
 import 'streak_flame.dart';
 import 'streak_widgets.dart';
@@ -138,7 +139,10 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
     final routine = ref.watch(routineProvider);
     final c = context.colors;
     if (routine == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      if (ref.watch(profileProvider).value == null) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      return const _ScanFirst();
     }
     final now = clock.now();
     final today = routine.stepsFor(_slot, now);
@@ -252,6 +256,20 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
                   ),
               ],
               const SizedBox(height: Space.xl),
+              LineItem(
+                title: 'Can\'t buy a step yet?',
+                subtitle: 'Cheap swaps, and kitchen things that help or harm',
+                trailing: Icon(Icons.chevron_right_rounded, color: c.inkFaint),
+                onTap: () => context.push('/guide/budget'),
+              ),
+              LineItem(
+                title: 'Skin guides',
+                subtitle: 'Food, water, weather, bedding',
+                trailing: Icon(Icons.chevron_right_rounded, color: c.inkFaint),
+                divider: false,
+                onTap: () => context.push('/guides'),
+              ),
+              const SizedBox(height: Space.md),
               Center(
                 child: TextButton(
                   onPressed: () => _showNotes(context, routine.notes),
@@ -300,6 +318,46 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
             const SizedBox(height: Space.lg),
             const Disclaimer(),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Before the first scan there's no routine to show: say why, and start it.
+class _ScanFirst extends StatelessWidget {
+  const _ScanFirst();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: AuraBackground(
+        intensity: 0.6,
+        child: SafeArea(
+          bottom: false,
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              Space.gutter,
+              Space.md,
+              Space.gutter,
+              Space.navClearance(context),
+            ),
+            children: [
+              Eyebrow(DateFormat('EEEE, d MMMM').format(clock.now())),
+              const SizedBox(height: Space.xs),
+              Text('Routine', style: context.text.displaySmall),
+              const SizedBox(height: Space.sm),
+              Text(
+                'Your routine comes from your scan. It reads what your skin '
+                'needs first, so no step is a guess.',
+                style: context.text.bodyMedium?.copyWith(
+                  color: context.colors.inkMuted,
+                ),
+              ),
+              const SizedBox(height: Space.lg),
+              const FirstScanCard(),
+            ],
+          ),
         ),
       ),
     );

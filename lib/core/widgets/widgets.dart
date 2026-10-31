@@ -9,6 +9,8 @@ import '../../domain/ingredients/product_analyzer.dart';
 import '../providers.dart';
 import '../theme/tokens.dart';
 
+import 'visuals.dart';
+
 export 'visuals.dart';
 
 // ── Surfaces ────────────────────────────────────────────────────────────
@@ -74,7 +76,7 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return DecoratedBox(
+    Widget card(ValueChanged<bool>? onHighlight) => DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
         boxShadow: color == null ? softShadow(context) : null,
@@ -90,10 +92,13 @@ class AppCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
+          onHighlightChanged: onHighlight,
           child: Padding(padding: padding, child: child),
         ),
       ),
     );
+    // Only cards you can tap press in; a large surface moves less.
+    return onTap == null ? card(null) : PressScale(scale: 0.985, builder: card);
   }
 }
 
@@ -200,37 +205,40 @@ class ArrowPill extends StatelessWidget {
     return Semantics(
       button: true,
       label: label,
-      child: Material(
-        color: bg,
-        shape: const StadiumBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap == null
-              ? null
-              : () {
-                  HapticFeedback.lightImpact();
-                  onTap!();
-                },
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 7, 7, 7),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    label,
-                    style: context.text.titleMedium?.copyWith(color: fg),
+      child: PressScale(
+        builder: (onHighlight) => Material(
+          color: bg,
+          shape: const StadiumBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onHighlightChanged: onHighlight,
+            onTap: onTap == null
+                ? null
+                : () {
+                    HapticFeedback.lightImpact();
+                    onTap!();
+                  },
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 7, 7, 7),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: context.text.titleMedium?.copyWith(color: fg),
+                    ),
                   ),
-                ),
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: circleBg,
-                    shape: BoxShape.circle,
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: circleBg,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: circleFg, size: 22),
                   ),
-                  child: Icon(icon, color: circleFg, size: 22),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -259,19 +267,23 @@ class CircleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    // Unfilled: just the icon and its ripple, no bubble behind it.
-    final button = Material(
-      color: filled ? c.primary : Colors.transparent,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox.square(
-          dimension: size,
-          child: Icon(
-            icon,
-            size: size * 0.45,
-            color: filled ? c.onPrimary : c.ink,
+    // Unfilled: just the icon and its press, no bubble behind it.
+    final button = PressScale(
+      scale: 0.9,
+      builder: (onHighlight) => Material(
+        color: filled ? c.primary : Colors.transparent,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          onHighlightChanged: onHighlight,
+          child: SizedBox.square(
+            dimension: size,
+            child: Icon(
+              icon,
+              size: size * 0.45,
+              color: filled ? c.onPrimary : c.ink,
+            ),
           ),
         ),
       ),
@@ -492,8 +504,8 @@ class MiniMetric extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
-          Text(
-            '$value',
+          CountUp(
+            value,
             style: context.text.headlineMedium?.copyWith(
               fontWeight: FontWeight.w300,
               height: 1,

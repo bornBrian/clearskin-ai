@@ -85,6 +85,26 @@ class RemindersScreen extends ConsumerWidget {
                   if (t != null) await save(p.copyWith(pmReminder: t));
                 },
               ),
+              _Row(
+                title: 'Ring like an alarm',
+                subtitle: 'Alarm tone until you snooze or open it',
+                enabled: p.remindersEnabled && r.alarm,
+                onToggle: (v) async {
+                  final n = ref.read(notificationServiceProvider);
+                  // On the minute needs Android's "Alarms & reminders"
+                  // switch; without it the alarm still rings, a little late.
+                  if (v && !await n.canRingOnTime()) {
+                    await n.requestRingOnTime();
+                  }
+                  await save(
+                    p.copyWith(
+                      remindersEnabled: v || p.remindersEnabled,
+                      reminders: r.copyWith(alarm: v),
+                    ),
+                    turnedOn: v,
+                  );
+                },
+              ),
               const SizedBox(height: Space.xl),
               const Eyebrow('Tracking'),
               _Row(

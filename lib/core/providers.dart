@@ -14,6 +14,7 @@ import '../data/models/profile.dart';
 import '../data/models/scan.dart';
 import '../data/repositories/repositories.dart';
 import '../domain/forecast/skin_forecast.dart';
+import '../domain/guidance/hydration.dart';
 import '../domain/ingredients/conflict_checker.dart';
 import '../domain/insights/insights_engine.dart';
 import '../domain/journey/journey_engine.dart';
@@ -406,12 +407,16 @@ final conflictsProvider = Provider<List<RoutineConflict>>((ref) {
 
 // ── Routine ────────────────────────────────────────────────────────────
 
+/// Null until the first usable scan has been analysed: answers alone can't
+/// tell acne from irritation or dryness from dehydration, and a routine
+/// built on a guess can make skin worse. The scan sees the skin first.
 final routineProvider = Provider<Routine?>((ref) {
   final profile = ref.watch(profileProvider).value;
-  if (profile == null) return null;
+  final latest = ref.watch(latestScanProvider);
+  if (profile == null || latest == null) return null;
   return RoutineEngine.build(
     profile: profile,
-    latest: ref.watch(latestScanProvider)?.analysis,
+    latest: latest.analysis,
     shelf: ref.watch(productsProvider).value ?? const [],
   );
 });
@@ -554,6 +559,58 @@ final weatherProvider = FutureProvider<WeatherSnapshot?>((ref) async {
   if (loc == null) return null;
   return ref.read(weatherServiceProvider).today(loc);
 });
+
+// ── Water ──────────────────────────────────────────────────────────────
+
+class HydrationSettingsNotifier extends AsyncNotifier<HydrationSettings> {
+  @override
+  Future<HydrationSettings> build() async => HydrationSettings.decode(
+    await ref.read(kvProvider).get(KvKeys.hydration),
+  );
+
+  Future<void> save(HydrationSettings s) async {
+    await ref.read(kvProvider).set(KvKeys.hydration, s.encode());
+    state = AsyncData(s);
+  }
+}
+
+final hydrationSettingsProvider =
+    AsyncNotifierProvider<HydrationSettingsNotifier, HydrationSettings>(
+      HydrationSettingsNotifier.new,
+    );
+
+/// Today's drinking target, from body, activity and today's weather.
+final hydrationTargetProvider = Provider<HydrationTarget?>((ref) {
+  final profile = ref.watch(profileProvider).value;
+  if (profile == null) return null;
+  final w = ref.watch(weatherProvider).value;
+  return Hydration.target(
+    profile: profile,
+    settings:
+        ref.watch(hydrationSettingsProvider).value ?? const HydrationSettings(),
+    temperatureC: w?.temperatureC,
+    humidity: w?.humidity,
+  );
+});
+
+/// Glasses of water logged today (kept per day; old days are just left).
+class WaterTodayNotifier extends AsyncNotifier<int> {
+  String get _key => '${KvKeys.waterPrefix}${Dates.today()}';
+
+  @override
+  Future<int> build() async =>
+      int.tryParse(await ref.read(kvProvider).get(_key) ?? '') ?? 0;
+
+  Future<void> add(int delta) async {
+    final next = ((state.value ?? 0) + delta).clamp(0, 30);
+    await ref.read(kvProvider).set(_key, '$next');
+    state = AsyncData(next);
+  }
+}
+
+final waterTodayProvider = AsyncNotifierProvider<WaterTodayNotifier, int>(
+  WaterTodayNotifier.new,
+);
 
 final forecastProvider = Provider<SkinForecast?>((ref) {
   final w = ref.watch(weatherProvider).value;

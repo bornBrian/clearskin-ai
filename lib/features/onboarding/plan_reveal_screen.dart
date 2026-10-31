@@ -8,38 +8,32 @@ import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/models/profile.dart';
-import '../../domain/routine/routine_engine.dart';
 import '../../domain/journey/journey_engine.dart';
 
-/// "Your plan is ready" — shown between onboarding and the paywall.
+/// "Your plan is ready" — shown at the end of onboarding, before the first
+/// scan.
 ///
-/// Showing people the concrete, personal plan they're about to unlock (their
-/// focus, routine, timeline and why it fits them) is the single biggest
-/// conversion lever in subscription apps. Everything here is real output of
-/// the routine engine, never placeholder marketing.
+/// The answers set the goal and the timeline; the routine itself waits for
+/// the scan, because answers alone can't tell acne from irritation or dry
+/// from dehydrated skin. So this screen shows the plan's shape and what the
+/// scan will measure, then starts it. The paywall comes after the first
+/// result, when there's something real to keep.
 class PlanRevealScreen extends ConsumerWidget {
   const PlanRevealScreen({super.key, required this.profile});
   final UserProfile profile;
 
-  Future<void> _continue(
-    BuildContext context,
-    WidgetRef ref,
-    bool upgrade,
-  ) async {
-    // Account first, so a purchase is tied to a person, not just a phone.
+  /// Account first, so the scan and any later purchase belong to a person,
+  /// not just a phone. Then onboarding opens the first scan.
+  Future<void> _continue(BuildContext context, WidgetRef ref) async {
     if (ref.read(accountProvider).value == null) {
       await context.push<bool>('/auth?mode=save');
       if (!context.mounted) return;
-    }
-    if (upgrade && !ref.read(premiumProvider)) {
-      await context.push('/paywall?source=onboarding');
     }
     if (context.mounted) context.pop();
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final routine = RoutineEngine.build(profile: profile);
     final timeline = PlanCopy.timeline(profile);
     final journey = JourneyEngine.build(
       profile: profile,
@@ -137,14 +131,7 @@ class PlanRevealScreen extends ConsumerWidget {
                                     ),
                                   ),
                                   const SizedBox(height: Space.xxl),
-                                  _RoutinePreview(
-                                    am: routine.am
-                                        .where((s) => !s.optional)
-                                        .toList(),
-                                    pm: routine.pm
-                                        .where((s) => !s.optional)
-                                        .toList(),
-                                  ),
+                                  const _ScanNext(),
                                 ]
                                 .animate(interval: 50.ms)
                                 .fadeIn(duration: Motion.slow)
@@ -168,13 +155,9 @@ class PlanRevealScreen extends ConsumerWidget {
                 child: Column(
                   children: [
                     ArrowPill(
-                      label: 'Unlock my full plan',
+                      label: 'Scan my skin',
                       dark: true,
-                      onTap: () => _continue(context, ref, true),
-                    ),
-                    TextButton(
-                      onPressed: () => _continue(context, ref, false),
-                      child: const Text('Continue free'),
+                      onTap: () => _continue(context, ref),
                     ),
                   ],
                 ),
@@ -249,87 +232,68 @@ class _Outcomes extends StatelessWidget {
   }
 }
 
-/// Morning / evening steps, one list at a time, each with the line drawing
-/// of what it comes in.
-class _RoutinePreview extends StatefulWidget {
-  const _RoutinePreview({required this.am, required this.pm});
-  final List<RoutineStep> am;
-  final List<RoutineStep> pm;
+/// What happens next: three angles, nine measures, then the routine built
+/// from them. Numbered hairline rows.
+class _ScanNext extends StatelessWidget {
+  const _ScanNext();
 
-  @override
-  State<_RoutinePreview> createState() => _RoutinePreviewState();
-}
-
-class _RoutinePreviewState extends State<_RoutinePreview> {
-  int _slot = 0;
+  static const _rows = [
+    ('Front, left and right', 'Every zone: forehead, cheeks, jawline.'),
+    (
+      'Nine measures',
+      'Blemishes, texture, pores, redness, tone, hydration, oil, '
+          'smoothness, under-eyes.',
+    ),
+    ('Then your routine', 'Built for what the scan finds, nothing guessed.'),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final steps = _slot == 0 ? widget.am : widget.pm;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            const Eyebrow('Your routine'),
-            const Spacer(),
-            Text(
-              '${steps.length} steps',
-              style: context.text.labelMedium?.copyWith(color: c.inkFaint),
-            ),
-          ],
-        ),
-        const SizedBox(height: Space.sm),
-        TextTabs(
-          labels: const ['Morning', 'Evening'],
-          index: _slot,
-          style: context.text.headlineSmall,
-          onChanged: (i) => setState(() => _slot = i),
-        ),
+        const Eyebrow('Next: your first scan'),
         const SizedBox(height: Space.xs),
-        AnimatedSwitcher(
-          duration: Motion.normal,
-          child: Column(
-            key: ValueKey(_slot),
-            children: [
-              for (var i = 0; i < steps.length; i++)
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: Space.sm),
-                  decoration: BoxDecoration(
-                    border: i == steps.length - 1
-                        ? null
-                        : Border(bottom: BorderSide(color: c.line)),
+        for (var i = 0; i < _rows.length; i++)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: Space.sm),
+            decoration: BoxDecoration(
+              border: i == _rows.length - 1
+                  ? null
+                  : Border(bottom: BorderSide(color: c.line)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 40,
+                  child: Text(
+                    (i + 1).toString().padLeft(2, '0'),
+                    style: context.text.titleMedium?.copyWith(
+                      color: c.inkFaint,
+                      fontWeight: FontWeight.w300,
+                    ),
                   ),
-                  child: Row(
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(
-                        width: 40,
-                        child: Text(
-                          (i + 1).toString().padLeft(2, '0'),
-                          style: context.text.titleMedium?.copyWith(
-                            color: c.inkFaint,
-                            fontWeight: FontWeight.w300,
-                          ),
+                      Text(_rows[i].$1, style: context.text.titleMedium),
+                      const SizedBox(height: 2),
+                      Text(
+                        _rows[i].$2,
+                        style: context.text.bodySmall?.copyWith(
+                          color: c.inkMuted,
                         ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          steps[i].title,
-                          style: context.text.titleMedium,
-                        ),
-                      ),
-                      ProductGlyph(
-                        category: steps[i].category,
-                        size: 34,
-                        color: c.inkMuted,
                       ),
                     ],
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
-        ),
       ],
     );
   }

@@ -396,6 +396,7 @@ class ReminderSettings {
     this.scanWeekday = DateTime.sunday,
     this.scanTime = const ReminderTime(10, 0),
     this.smart = true,
+    this.alarm = false,
   });
 
   final bool checkIn;
@@ -409,6 +410,10 @@ class ReminderSettings {
   /// Context-aware alerts: streak at risk, high UV, come-back after a break.
   final bool smart;
 
+  /// Morning and evening routine reminders ring like an alarm (alarm tone
+  /// and volume, until answered or snoozed) instead of a single chime.
+  final bool alarm;
+
   ReminderSettings copyWith({
     bool? checkIn,
     ReminderTime? checkInTime,
@@ -416,6 +421,7 @@ class ReminderSettings {
     int? scanWeekday,
     ReminderTime? scanTime,
     bool? smart,
+    bool? alarm,
   }) => ReminderSettings(
     checkIn: checkIn ?? this.checkIn,
     checkInTime: checkInTime ?? this.checkInTime,
@@ -423,6 +429,7 @@ class ReminderSettings {
     scanWeekday: scanWeekday ?? this.scanWeekday,
     scanTime: scanTime ?? this.scanTime,
     smart: smart ?? this.smart,
+    alarm: alarm ?? this.alarm,
   );
 
   Map<String, Object?> toJson() => {
@@ -432,6 +439,7 @@ class ReminderSettings {
     'scanWeekday': scanWeekday,
     'scanTime': scanTime.toJson(),
     'smart': smart,
+    'alarm': alarm,
   };
 
   factory ReminderSettings.fromJson(Map<String, dynamic> j) {
@@ -446,6 +454,7 @@ class ReminderSettings {
       scanWeekday: day is int && day >= 1 && day <= 7 ? day : d.scanWeekday,
       scanTime: time(j['scanTime'], d.scanTime),
       smart: j['smart'] as bool? ?? d.smart,
+      alarm: j['alarm'] as bool? ?? d.alarm,
     );
   }
 }

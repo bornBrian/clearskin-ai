@@ -18,7 +18,10 @@ import '../paywall/renewal_banner.dart';
 import '../routine/streak_flame.dart';
 import '../routine/streak_widgets.dart';
 import '../journey/journey_screen.dart';
+import '../guides/guides_screen.dart';
+import '../guides/water_screen.dart';
 import '../routine/routine_screen.dart';
+import '../scan/first_scan_card.dart';
 import '../tips/tips_widgets.dart';
 
 class TodayScreen extends ConsumerWidget {
@@ -65,7 +68,10 @@ class TodayScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: Space.xl),
                         const RenewalBannerCard(),
-                        if (hasScan) const _ScoreHero() else const _FirstScan(),
+                        if (hasScan)
+                          const _ScoreHero()
+                        else
+                          const FirstScanCard(),
                         const _RedFlagBanner(),
                         if (hasScan) const _TopNudge(),
                         const SizedBox(height: Space.xl),
@@ -75,7 +81,11 @@ class TodayScreen extends ConsumerWidget {
                         const SizedBox(height: Space.md),
                         const _PlanCard(),
                         const SizedBox(height: Space.xl),
+                        const WaterCard(),
+                        const SizedBox(height: Space.xl),
                         const _Forecast(),
+                        const GuideOfTheDay(),
+                        const SizedBox(height: Space.xl),
                         const ForYouCarousel(),
                         const SizedBox(height: Space.lg),
                         const _ConflictAlert(),
@@ -152,168 +162,95 @@ class _ScoreHero extends ConsumerWidget {
       SkinMetric.pigmentation,
     ].where((m) => a.scoreFor(m) != null).toList();
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => context.push('/scan/${latest.id}'),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              ScoreDial(score: a.overallScore, size: 150),
-              const SizedBox(width: Space.lg),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Eyebrow('Skin score'),
-                    const SizedBox(height: Space.xs),
-                    Text(
-                      scoreWord(a.overallScore),
-                      style: context.text.headlineMedium,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Scanned ${Dates.relative(latest.createdAt).toLowerCase()}',
-                      style: context.text.bodySmall,
-                    ),
-                    const SizedBox(height: Space.md),
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            'Full report',
-                            style: context.text.labelLarge?.copyWith(
-                              color: c.ink,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 16,
-                          color: c.ink,
-                        ),
-                      ],
-                    ),
-                  ],
+    return PressScale(
+      scale: 0.985,
+      builder: (onHighlight) => InkWell(
+        onTap: () => context.push('/scan/${latest.id}'),
+        onHighlightChanged: onHighlight,
+        highlightColor: Colors.transparent,
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Hero(
+                  tag: 'dial-${latest.id}',
+                  flightShuttleBuilder: ScoreDial.flight,
+                  child: ScoreDial(score: a.overallScore, size: 150),
                 ),
-              ),
-            ],
-          ),
-          if (metrics.isNotEmpty) ...[
-            const SizedBox(height: Space.lg),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: Space.md),
-              decoration: BoxDecoration(
-                border: Border.symmetric(horizontal: BorderSide(color: c.line)),
-              ),
-              child: Row(
-                children: [
-                  for (var i = 0; i < metrics.length; i++) ...[
-                    if (i > 0)
-                      Container(
-                        width: 1,
-                        height: 56,
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: Space.md,
-                        ),
-                        color: c.line,
-                      ),
-                    Expanded(
-                      child: MiniMetric(
-                        label: metrics[i].label,
-                        value: a.scoreFor(metrics[i])!,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// First run: one crafted charcoal card, no stock faces.
-class _FirstScan extends StatelessWidget {
-  const _FirstScan();
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: BrandColors.charcoal,
-      borderRadius: BorderRadius.circular(Radii.lg),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.push('/scan'),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            Space.lg,
-            Space.xl,
-            Space.lg,
-            Space.lg,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: SizedBox.square(
-                  dimension: 190,
-                  child: Stack(
-                    alignment: Alignment.center,
+                const SizedBox(width: Space.lg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ScoreDial(
-                        score: 0,
-                        size: 190,
-                        trackColor: BrandColors.cream.withValues(alpha: 0.28),
-                        color: BrandColors.cream,
-                        textColor: Colors.transparent,
+                      const Eyebrow('Skin score'),
+                      const SizedBox(height: Space.xs),
+                      Text(
+                        scoreWord(a.overallScore),
+                        style: context.text.headlineMedium,
                       ),
-                      const LogoMark(size: 70, color: BrandColors.cream),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Scanned ${Dates.relative(latest.createdAt).toLowerCase()}',
+                        style: context.text.bodySmall,
+                      ),
+                      const SizedBox(height: Space.md),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              'Full report',
+                              style: context.text.labelLarge?.copyWith(
+                                color: c.ink,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 16,
+                            color: c.ink,
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: Space.xl),
-              Eyebrow(
-                '10 seconds',
-                color: BrandColors.cream.withValues(alpha: 0.6),
-              ),
-              const SizedBox(height: Space.xs),
-              Text(
-                'Your first scan',
-                style: context.text.displaySmall?.copyWith(
-                  color: BrandColors.cream,
-                ),
-              ),
-              const SizedBox(height: Space.xs),
-              Text(
-                'Your baseline for every result to come.',
-                style: context.text.bodyMedium?.copyWith(
-                  color: BrandColors.cream.withValues(alpha: 0.65),
-                ),
-              ),
+              ],
+            ),
+            if (metrics.isNotEmpty) ...[
               const SizedBox(height: Space.lg),
               Container(
-                height: 54,
-                decoration: const ShapeDecoration(
-                  color: BrandColors.cream,
-                  shape: StadiumBorder(),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'Start scan',
-                  style: context.text.titleMedium?.copyWith(
-                    color: BrandColors.charcoal,
-                    fontWeight: FontWeight.w600,
+                padding: const EdgeInsets.symmetric(vertical: Space.md),
+                decoration: BoxDecoration(
+                  border: Border.symmetric(
+                    horizontal: BorderSide(color: c.line),
                   ),
+                ),
+                child: Row(
+                  children: [
+                    for (var i = 0; i < metrics.length; i++) ...[
+                      if (i > 0)
+                        Container(
+                          width: 1,
+                          height: 56,
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: Space.md,
+                          ),
+                          color: c.line,
+                        ),
+                      Expanded(
+                        child: MiniMetric(
+                          label: metrics[i].label,
+                          value: a.scoreFor(metrics[i])!,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
-          ),
+          ],
         ),
       ),
     );
@@ -636,6 +573,12 @@ class _MoreRows extends ConsumerWidget {
               ? chevron
               : Icon(Icons.check_rounded, color: c.leaf),
           onTap: () => context.push('/checkin'),
+        ),
+        LineItem(
+          title: 'Skin guides',
+          subtitle: 'Budget, food, water, weather, bedding',
+          trailing: chevron,
+          onTap: () => context.push('/guides'),
         ),
         LineItem(
           title: 'Ask your skin coach',

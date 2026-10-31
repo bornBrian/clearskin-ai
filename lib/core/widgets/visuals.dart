@@ -8,6 +8,70 @@ import '../theme/tokens.dart';
 // Crafted, illustration-free visuals: drawn rather than stock, so the app
 // has its own look instead of a template's.
 
+// ── Motion ──────────────────────────────────────────────────────────────
+
+/// Whether the person asked the phone for less motion. Every animation
+/// here checks it: things then simply appear in their final state.
+bool reduceMotion(BuildContext context) =>
+    MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+
+/// How a physical control answers a press: a quick, small press-in on touch
+/// and a soft settle on release. A transform only, so nothing around it
+/// moves. Wire [builder]'s callback to the InkWell's `onHighlightChanged`
+/// (it follows the real pressed state, so scrolling or a cancelled tap
+/// releases it).
+class PressScale extends StatefulWidget {
+  const PressScale({super.key, required this.builder, this.scale = 0.97});
+
+  final Widget Function(ValueChanged<bool> onHighlight) builder;
+  final double scale;
+
+  @override
+  State<PressScale> createState() => _PressScaleState();
+}
+
+class _PressScaleState extends State<PressScale> {
+  bool _down = false;
+
+  void _set(bool v) {
+    if (v != _down && mounted) setState(() => _down = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pressed = _down && !reduceMotion(context);
+    return AnimatedScale(
+      scale: pressed ? widget.scale : 1,
+      duration: pressed
+          ? const Duration(milliseconds: 90)
+          : const Duration(milliseconds: 260),
+      curve: pressed ? Curves.easeOut : Curves.easeOutBack,
+      child: widget.builder(_set),
+    );
+  }
+}
+
+/// A whole number that builds up from zero when it first appears, the way
+/// the score dial fills: numbers that are measured, not printed.
+class CountUp extends StatelessWidget {
+  const CountUp(this.value, {super.key, this.style, this.duration});
+
+  final int value;
+  final TextStyle? style;
+  final Duration? duration;
+
+  @override
+  Widget build(BuildContext context) {
+    if (reduceMotion(context)) return Text('$value', style: style);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value.toDouble()),
+      duration: duration ?? const Duration(milliseconds: 900),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, _) => Text('${v.round()}', style: style),
+    );
+  }
+}
+
 // ── Score dial ──────────────────────────────────────────────────────────
 
 /// A watch-style dial: fine ticks around the edge, lit up to the score, with
@@ -23,6 +87,7 @@ class ScoreDial extends StatelessWidget {
     this.label,
     this.caption,
     this.ticks = 72,
+    this.animate = true,
   });
 
   final int score;
@@ -34,15 +99,66 @@ class ScoreDial extends StatelessWidget {
   final String? caption;
   final int ticks;
 
+  /// Off: drawn straight at the score (for a dial in flight between screens).
+  final bool animate;
+
+  /// The same dial, drawn at its score without filling up.
+  ScoreDial still() => ScoreDial(
+    score: score,
+    size: size,
+    color: color,
+    trackColor: trackColor,
+    textColor: textColor,
+    label: label,
+    caption: caption,
+    ticks: ticks,
+    animate: false,
+  );
+
+  /// Today's dial and the report's are one dial: it flies between the two
+  /// screens, crossfading from one look to the other.
+  static Widget flight(
+    BuildContext _,
+    Animation<double> t,
+    HeroFlightDirection _,
+    BuildContext from,
+    BuildContext to,
+  ) {
+    ScoreDial dial(BuildContext ctx) {
+      final hero = ctx.widget as Hero;
+      return (hero.child as ScoreDial).still();
+    }
+
+    final a = dial(from);
+    final b = dial(to);
+    return AnimatedBuilder(
+      animation: t,
+      builder: (_, _) => Stack(
+        fit: StackFit.expand,
+        children: [
+          Opacity(
+            opacity: 1 - t.value,
+            child: FittedBox(child: a),
+          ),
+          Opacity(
+            opacity: t.value,
+            child: FittedBox(child: b),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final fg = textColor ?? c.ink;
+    final moving = animate && !reduceMotion(context);
     return Semantics(
       label: '${label ?? 'Skin score'} $score out of 100',
       child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: score / 100),
-        duration: const Duration(milliseconds: 1100),
+        tween: Tween(begin: moving ? 0 : score / 100, end: score / 100),
+        duration: moving ? const Duration(milliseconds: 1100) : Duration.zero,
         curve: Curves.easeOutCubic,
         builder: (context, t, _) => SizedBox.square(
           dimension: size,

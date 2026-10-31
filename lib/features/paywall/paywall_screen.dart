@@ -44,6 +44,8 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   bool _remindTrial = true;
 
   String get _headline => switch (widget.source) {
+    'first_scan' => 'Your routine is ready.\nNow see it work.',
+    'guides' => 'Every guide,\nfor your skin.',
     'coach' => 'Answers that\nknow your skin.',
     'compare' || 'trends' => 'See every bit\nof progress.',
     'insights' => 'Find what breaks\nyou out.',
