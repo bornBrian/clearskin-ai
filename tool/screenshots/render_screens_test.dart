@@ -53,6 +53,9 @@ import 'package:clearskin_ai/services/purchases_service.dart';
 import 'package:clearskin_ai/services/telemetry.dart';
 import 'package:clearskin_ai/features/onboarding/plan_reveal_screen.dart';
 import 'package:clearskin_ai/features/tips/tips_widgets.dart';
+import 'package:clearskin_ai/domain/guidance/hydration.dart';
+import 'package:clearskin_ai/features/guides/guides_screen.dart';
+import 'package:clearskin_ai/features/guides/water_screen.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -403,6 +406,21 @@ Future<void> _loadFonts() async {
   await icons.load();
 }
 
+class _Hydration extends HydrationSettingsNotifier {
+  @override
+  Future<HydrationSettings> build() async =>
+      const HydrationSettings(weightKg: 64, heightCm: 168, activeMinutes: 30);
+}
+
+class _Water extends WaterTodayNotifier {
+  @override
+  Future<int> build() async => 3;
+
+  @override
+  Future<void> add(int delta) async =>
+      state = AsyncData((state.value ?? 0) + delta);
+}
+
 Widget _app({
   required String initial,
   required List<RouteBase> routes,
@@ -420,6 +438,8 @@ Widget _app({
       routineLogsProvider.overrideWith(_Logs.new),
       checkInsProvider.overrideWith(_CheckIns.new),
       chatProvider.overrideWith(_Chat.new),
+      hydrationSettingsProvider.overrideWith(_Hydration.new),
+      waterTodayProvider.overrideWith(_Water.new),
       accountProvider.overrideWith(_Account.new),
       previousOpenProvider.overrideWith(
         (ref) async => _now.subtract(const Duration(hours: 20)),
@@ -559,14 +579,18 @@ Future<void> _shotNow(WidgetTester tester, Widget app, String name) async {
 /// Set `RECORD=<dir>` to record the app flows the ad renderers in tool/ads
 /// cut from: 30 fps PNG frames at 1080×1920, plus where each tap lands.
 final _recordDir = Platform.environment['RECORD'];
+final _touchDir = Platform.environment['TOUCH'];
 const _recW = 390.0;
 const _recH = 390.0 * 1920 / 1080;
 
 class _Recorder {
-  _Recorder(this.t, this.key, this.dir);
+  _Recorder(this.t, this.key, this.dir, {this.height = _recH});
   final WidgetTester t;
   final GlobalKey key;
   final Directory dir;
+
+  /// Logical height of the recorded screen (width is always [_recW]).
+  final double height;
   int n = 0;
   final taps = <Map<String, num>>[];
 
@@ -614,9 +638,34 @@ class _Recorder {
     }
   }
 
+  /// Smooth, eased scroll by [pixels], for content not built yet.
+  Future<void> scrollBy(double pixels, double seconds) async {
+    final pos = _scroll;
+    final from = pos.pixels;
+    final to = (from + pixels).clamp(pos.minScrollExtent, pos.maxScrollExtent);
+    final frames = (seconds * 30).round();
+    for (var i = 1; i <= frames; i++) {
+      final p = i / frames;
+      final e = p < 0.5 ? 4 * p * p * p : 1 - math.pow(-2 * p + 2, 3) / 2;
+      pos.jumpTo(from + (to - from) * e);
+      await frame();
+    }
+  }
+
+  /// Starts the recording already scrolled so [target] sits [margin] down.
+  void jumpTo(Finder target, {double margin = 80}) {
+    final pos = _scroll;
+    pos.jumpTo(
+      (pos.pixels + t.getTopLeft(target).dy - margin).clamp(
+        pos.minScrollExtent,
+        pos.maxScrollExtent,
+      ),
+    );
+  }
+
   Future<void> tap(Finder f) async {
     final c = t.getCenter(f);
-    taps.add({'frame': n, 'x': c.dx / _recW, 'y': c.dy / _recH});
+    taps.add({'frame': n, 'x': c.dx / _recW, 'y': c.dy / height});
     await t.tap(f, warnIfMissed: false);
   }
 }
@@ -625,11 +674,12 @@ Future<void> _record(
   WidgetTester t,
   Widget app,
   String name,
-  Future<void> Function(_Recorder r) script,
-) async {
+  Future<void> Function(_Recorder r) script, {
+  double height = _recH,
+}) async {
   debugDisableShadows = false;
   t.view
-    ..physicalSize = const Size(1080, 1920)
+    ..physicalSize = Size(1080, 1080 * height / _recW)
     ..devicePixelRatio = 1080 / _recW;
   await _warmSamplePhoto(t);
   final key = GlobalKey();
@@ -640,7 +690,7 @@ Future<void> _record(
   for (final f in dir.listSync()) {
     f.deleteSync();
   }
-  final r = _Recorder(t, key, dir);
+  final r = _Recorder(t, key, dir, height: height);
   await script(r);
   File('${dir.path}/taps.json').writeAsStringSync(jsonEncode(r.taps));
   await t.pumpWidget(const SizedBox());
@@ -875,6 +925,56 @@ void main() {
         routes: [GoRoute(path: '/', builder: (_, _) => const JourneyScreen())],
       ),
       '14-journey',
+    );
+  });
+
+  testWidgets('36 routine before the first scan', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/routine?slot=am',
+        routes: _shellRoutes(),
+        withScans: false,
+      ),
+      '36-routine-first-run',
+    );
+  });
+
+  testWidgets('37 guides', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [GoRoute(path: '/', builder: (_, _) => const GuidesScreen())],
+      ),
+      '37-guides',
+    );
+  });
+
+  testWidgets('38 guide: kitchen remedies', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const GuideScreen(guideId: 'kitchen'),
+          ),
+        ],
+      ),
+      '38-guide-kitchen',
+    );
+  });
+
+  testWidgets('39 water', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [GoRoute(path: '/', builder: (_, _) => const WaterScreen())],
+      ),
+      '39-water',
     );
   });
 
@@ -1308,6 +1408,231 @@ void main() {
       );
     });
   });
+
+  // Phone-shaped (390×844, a modern phone's screen) flows for ad 14, which
+  // puts them on real phones in real hands. Nothing here shows the render
+  // fixture's face: it has no model release.
+  group('ad recordings, phone-shaped', skip: _recordDir == null, () {
+    const h = 844.0;
+    Future<void> rec(
+      WidgetTester t,
+      Widget app,
+      String name,
+      Future<void> Function(_Recorder r) script,
+    ) => _record(t, app, 'phone/$name', script, height: h);
+
+    testWidgets('today', (t) async {
+      await rec(t, _app(initial: '/today', routes: _shellRoutes()), 'today', (
+        r,
+      ) async {
+        await r.hold(1.6);
+        await r.scrollBy(760, 1.6);
+        await r.hold(0.5);
+        await r.tap(find.text('Add a glass'));
+        await r.hold(1.2);
+      });
+    });
+
+    testWidgets('report', (t) async {
+      await rec(
+        t,
+        _app(
+          initial: '/scan/s6',
+          routes: [
+            GoRoute(
+              path: '/scan/:id',
+              builder: (_, s) =>
+                  ScanResultScreen(scanId: s.pathParameters['id']!),
+            ),
+          ],
+        ),
+        'report',
+        (r) async => r.hold(2.6),
+      );
+    });
+
+    testWidgets('breakdown', (t) async {
+      await rec(
+        t,
+        _app(
+          initial: '/scan/s6',
+          routes: [
+            GoRoute(
+              path: '/scan/:id',
+              builder: (_, s) =>
+                  ScanResultScreen(scanId: s.pathParameters['id']!),
+            ),
+          ],
+        ),
+        'breakdown',
+        (r) async {
+          r.jumpTo(find.text('BREAKDOWN'), margin: 120);
+          await r.hold(1.0);
+          await r.scrollTo(find.text('YOUR POTENTIAL'), 1.6, margin: 140);
+          await r.hold(0.8);
+        },
+      );
+    });
+
+    testWidgets('routine', (t) async {
+      await rec(
+        t,
+        _app(initial: '/routine?slot=am', routes: _shellRoutes()),
+        'routine',
+        (r) async {
+          await r.hold(0.9);
+          final open = find.byWidgetPredicate(
+            (w) => w is CheckCircle && !w.done,
+          );
+          for (var i = 0; i < 3; i++) {
+            await r.tap(open.first);
+            await r.hold(0.7);
+          }
+          await r.hold(0.8);
+        },
+      );
+    });
+
+    testWidgets('reminders', (t) async {
+      await rec(
+        t,
+        _app(
+          initial: '/',
+          profile: _profile.copyWith(
+            reminders: _profile.reminders.copyWith(alarm: true),
+          ),
+          routes: [
+            GoRoute(path: '/', builder: (_, _) => const RemindersScreen()),
+          ],
+        ),
+        'reminders',
+        (r) async => r.hold(2.4),
+      );
+    });
+
+    testWidgets('guides', (t) async {
+      await rec(
+        t,
+        _app(
+          initial: '/',
+          routes: [GoRoute(path: '/', builder: (_, _) => const GuidesScreen())],
+        ),
+        'guides',
+        (r) async {
+          await r.hold(1.0);
+          await r.scrollTo(find.text('Water and your skin'), 1.6, margin: 300);
+          await r.hold(0.8);
+        },
+      );
+    });
+
+    testWidgets('kitchen', (t) async {
+      await rec(
+        t,
+        _app(
+          initial: '/',
+          routes: [
+            GoRoute(
+              path: '/',
+              builder: (_, _) => const GuideScreen(guideId: 'kitchen'),
+            ),
+          ],
+        ),
+        'kitchen',
+        (r) async {
+          await r.hold(0.8);
+          await r.scrollBy(1500, 2.4);
+          await r.hold(1.4);
+        },
+      );
+    });
+
+    testWidgets('water', (t) async {
+      await rec(
+        t,
+        _app(
+          initial: '/',
+          routes: [GoRoute(path: '/', builder: (_, _) => const WaterScreen())],
+        ),
+        'water',
+        (r) async {
+          await r.hold(0.9);
+          for (var i = 0; i < 2; i++) {
+            await r.tap(find.text('Add a glass'));
+            await r.hold(0.8);
+          }
+        },
+      );
+    });
+
+    testWidgets('progress', (t) async {
+      await rec(
+        t,
+        _app(initial: '/progress', routes: _shellRoutes()),
+        'progress',
+        (r) async {
+          await r.hold(0.6);
+          await r.tap(find.text('Radiance'));
+          await r.hold(1.8);
+        },
+      );
+    });
+  });
+
+  // Ad 14's touched phones: the finger in each stock clip (tool/ads/motion
+  // fingers.py, touch.py) replayed as real touch gestures, one plate frame
+  // per recorded frame, so the app scrolls and flings under that finger.
+  // Set TOUCH=<dir of touch/*.json>; frames go to RECORD/phone/follow/<name>.
+  group(
+    'ad recordings, following a finger',
+    skip: _recordDir == null || _touchDir == null,
+    () {
+      final List<File> touched = _touchDir == null
+          ? const []
+          : Directory(_touchDir!).listSync().whereType<File>().toList();
+      for (final file in touched) {
+        final name = file.uri.pathSegments.last.replaceAll('.json', '');
+        testWidgets(name, (t) async {
+          final spec =
+              jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+          final initial = switch (spec['screen']) {
+            'today' => '/today',
+            'routine' => '/routine?slot=am',
+            'progress' => '/progress',
+            final s => throw ArgumentError('no screen $s'),
+          };
+          await _record(
+            t,
+            _app(initial: initial, routes: _shellRoutes()),
+            'phone/follow/$name',
+            (r) async {
+              await r.hold(0.8); // the screen's own entrance
+              TestGesture? finger;
+              for (final p in spec['touch'] as List) {
+                if (p != null) {
+                  final at = Offset(
+                    (p[0] as num).toDouble(),
+                    (p[1] as num).toDouble(),
+                  );
+                  if (finger == null) {
+                    finger = await t.startGesture(at);
+                  } else {
+                    await finger.moveTo(at);
+                  }
+                } else if (finger != null) {
+                  await finger.up();
+                  finger = null;
+                }
+                await r.frame();
+              }
+              await finger?.up();
+            },
+            height: 844,
+          );
+        });
+      }
+    },
+  );
 }
 
 /// Opens a routine step's detail sheet over the routine, as a tap would.

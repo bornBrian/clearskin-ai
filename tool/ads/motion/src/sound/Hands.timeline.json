@@ -1,0 +1,53 @@
+{
+  "meet": {
+    "at": 18,
+    "end": 64,
+    "seconds": 0.6,
+    "file": "vo/Hands/meet.wav"
+  },
+  "scan": {
+    "at": 82,
+    "end": 173,
+    "seconds": 2.719,
+    "file": "vo/Hands/scan.wav"
+  },
+  "nine": {
+    "at": 188,
+    "end": 255,
+    "seconds": 6.264,
+    "file": "vo/Hands/nine.wav"
+  },
+  "routine": {
+    "at": 270,
+    "end": 340,
+    "seconds": 8.991,
+    "file": "vo/Hands/routine.wav"
+  },
+  "alarm": {
+    "at": 355,
+    "end": 459,
+    "seconds": 11.839,
+    "file": "vo/Hands/alarm.wav"
+  },
+  "guides": {
+    "at": 474,
+    "end": 607,
+    "seconds": 15.811,
+    "file": "vo/Hands/guides.wav"
+  },
+  "progress": {
+    "at": 622,
+    "end": 684,
+    "seconds": 20.745,
+    "file": "vo/Hands/progress.wav"
+  },
+  "brand": {
+    "at": 705,
+    "end": 802,
+    "seconds": 23.493,
+    "file": "vo/Hands/brand.wav"
+  },
+  "_end": {
+    "at": 856
+  }
+}

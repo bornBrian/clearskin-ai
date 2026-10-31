@@ -30,6 +30,9 @@ const ADS = {
   Working: { file: "clearskin-ad-10-is-it-working", score: true },
   Explained: { file: "clearskin-ad-11-skin-explained", score: true },
   Measured: { file: "clearskin-ad-12-measured", score: true, vo: true },
+  Reads: { file: "clearskin-ad-13-reads-your-skin", score: true, vo: true },
+  // one render thread: parallel decoders race on its long composited plates
+  Hands: { file: "clearskin-ad-14-in-your-hands", score: true, vo: true, concurrency: 1 },
 };
 
 /**
@@ -64,7 +67,7 @@ for (const id of ids) {
   const silent = join(OUT, `${ad.file}-no-music.mp4`);
   execFileSync(
     process.execPath,
-    [CLI, "render", "src/index.ts", id, silent, "--codec=h264", "--crf=16", "--muted", "--concurrency=4", "--timeout=180000", "--gl=angle",
+    [CLI, "render", "src/index.ts", id, silent, "--codec=h264", "--crf=16", "--muted", `--concurrency=${ad.concurrency ?? 4}`, "--timeout=180000", "--gl=angle",
       ...(browser ? [`--browser-executable=${browser}`] : [])],
     { stdio: "inherit", cwd: import.meta.dirname },
   );
@@ -91,7 +94,7 @@ for (const id of ids) {
       mux(`${tmp}-score-vo.wav`, join(OUT, `${ad.file}.mp4`));
       mux(`${tmp}-sfx-vo.wav`, join(OUT, `${ad.file}-sfx-only.mp4`), [], -16);
       rmSync(silent, { force: true });
-      console.log(`\n${join(OUT, `${ad.file}.mp4`)}\nOriginal score, sound design and voice (Kokoro, Apache 2.0): no credit needed.\n`);
+      console.log(`\n${join(OUT, `${ad.file}.mp4`)}\nOriginal score, voice (Kokoro, Apache 2.0) and any Mixkit footage/effects (free licences): no credit needed.\n`);
       continue;
     }
     mux(`${tmp}-score.wav`, join(OUT, `${ad.file}.mp4`));

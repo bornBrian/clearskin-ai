@@ -408,7 +408,7 @@ export function EndCard(props: { at: number; tagline: string; theme: "dark" | "l
       </div>
       <Words text={props.tagline} at={at + 30} size={58} weight={400} color={ink} style={{ position: "absolute", top: 1080, width: "100%" }} />
       <Words
-        text={props.footer ?? "Coming soon on Google Play"}
+        text={props.footer ?? "Available now on Google Play"}
         at={at + 42}
         size={34}
         weight={500}

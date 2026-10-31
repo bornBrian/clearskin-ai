@@ -1,0 +1,264 @@
+{
+  "voice": {
+    "name": "af_heart",
+    "speed": 0.9,
+    "lead": 0.6,
+    "lines": [
+      {
+        "id": "meet",
+        "text": "This is ClearSkin AI.",
+        "pause": 0.6
+      },
+      {
+        "id": "scan",
+        "text": "It starts with one scan of your face, from every side.",
+        "pause": 0.5
+      },
+      {
+        "id": "nine",
+        "text": "Then nine measurements, in plain words.",
+        "pause": 0.5
+      },
+      {
+        "id": "routine",
+        "text": "A routine built from what it actually sees.",
+        "pause": 0.5
+      },
+      {
+        "id": "alarm",
+        "text": "Reminders that ring like an alarm, so you never skip a night.",
+        "pause": 0.5
+      },
+      {
+        "id": "guides",
+        "text": "Guides for everything else. Food, water, weather, even your pillowcase.",
+        "pause": 0.5
+      },
+      {
+        "id": "progress",
+        "text": "And week by week, you see it change.",
+        "pause": 0.7
+      },
+      {
+        "id": "brand",
+        "text": "ClearSkin AI. Available now on Google Play.",
+        "pause": 1.8
+      }
+    ]
+  },
+  "bpm": 100,
+  "beats": 48,
+  "tail": 0.6,
+  "music_gain": -8,
+  "octave": 48,
+  "bars": [
+    "Cmaj7",
+    "Am7",
+    "Fmaj7",
+    "Gsus4",
+    "Cmaj7",
+    "Em7",
+    "Fmaj7",
+    "G",
+    "Am7",
+    "Fmaj7",
+    "Csus2",
+    "Csus2"
+  ],
+  "sections": [
+    {
+      "from": 0,
+      "to": 4.5,
+      "pad": 0.5,
+      "cutoff": [
+        350,
+        900
+      ]
+    },
+    {
+      "from": 4.5,
+      "to": 15,
+      "pad": 0.5,
+      "pluck": 0.35,
+      "cutoff": [
+        900,
+        1500
+      ]
+    },
+    {
+      "from": 15,
+      "to": 38.6,
+      "pad": 0.5,
+      "pluck": 0.45,
+      "bass": 0.5,
+      "kick": 0.5,
+      "hat": 0.35,
+      "cutoff": [
+        1500,
+        2600
+      ]
+    },
+    {
+      "from": 39.2,
+      "to": 48,
+      "pad": 0.55,
+      "pluck": 0.25,
+      "cutoff": [
+        2400,
+        700
+      ]
+    }
+  ],
+  "gaps": [
+    [
+      38.6,
+      39.2
+    ]
+  ],
+  "cues": [
+    {
+      "sfx": "sample",
+      "file": "2358",
+      "line": "meet",
+      "frame": 6,
+      "gain": -18
+    },
+    {
+      "sfx": "sample",
+      "file": "166",
+      "line": "scan",
+      "align": "peak",
+      "gain": -20
+    },
+    {
+      "sfx": "sample",
+      "file": "1437",
+      "line": "scan",
+      "frame": 2,
+      "trim": [
+        0.3,
+        1.6
+      ],
+      "gain": -9
+    },
+    {
+      "sfx": "sample",
+      "file": "2847",
+      "line": "scan",
+      "frame": 10,
+      "gain": -14
+    },
+    {
+      "sfx": "sample",
+      "file": "1133",
+      "frame": 154,
+      "align": "peak",
+      "gain": -4
+    },
+    {
+      "sfx": "sample",
+      "file": "2568",
+      "frame": 189,
+      "gain": -11
+    },
+    {
+      "sfx": "sample",
+      "file": "2867",
+      "frame": 200,
+      "gain": -15
+    },
+    {
+      "sfx": "sample",
+      "file": "166",
+      "line": "routine",
+      "align": "peak",
+      "gain": -20
+    },
+    {
+      "sfx": "sample",
+      "file": "1120",
+      "line": "routine",
+      "frame": 15,
+      "align": "peak",
+      "gain": -3
+    },
+    {
+      "sfx": "sample",
+      "file": "1120",
+      "line": "routine",
+      "frame": 36,
+      "align": "peak",
+      "gain": -3
+    },
+    {
+      "sfx": "sample",
+      "file": "1120",
+      "line": "routine",
+      "frame": 57,
+      "align": "peak",
+      "gain": -3
+    },
+    {
+      "sfx": "sample",
+      "file": "166",
+      "line": "alarm",
+      "align": "peak",
+      "gain": -20
+    },
+    {
+      "sfx": "sample",
+      "file": "995",
+      "line": "alarm",
+      "frame": 22,
+      "trim": [
+        0,
+        1.6
+      ],
+      "fade": 0.4,
+      "gain": -17
+    },
+    {
+      "sfx": "sample",
+      "file": "166",
+      "line": "guides",
+      "align": "peak",
+      "gain": -20
+    },
+    {
+      "sfx": "sample",
+      "file": "1489",
+      "line": "guides",
+      "frame": 76,
+      "align": "peak",
+      "gain": -17
+    },
+    {
+      "sfx": "sample",
+      "file": "166",
+      "line": "progress",
+      "align": "peak",
+      "gain": -20
+    },
+    {
+      "sfx": "sample",
+      "file": "2568",
+      "line": "progress",
+      "frame": 14,
+      "gain": -9
+    },
+    {
+      "sfx": "sample",
+      "file": "2902",
+      "line": "brand",
+      "align": "peak",
+      "gain": -7
+    },
+    {
+      "sfx": "sample",
+      "file": "2358",
+      "line": "brand",
+      "frame": 38,
+      "gain": -15
+    }
+  ]
+}

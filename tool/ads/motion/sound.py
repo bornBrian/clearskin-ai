@@ -8,7 +8,11 @@ picture and sound use the same tempo and beat grid:
   sections                  beat ranges and which layers play, how loud
   cues                      sound effects on beats (impacts, risers, whooshes)
 
-Everything is synthesised here (no samples), so it is ours to use anywhere.
+The music and the named effects are synthesised here, so they are ours to
+use anywhere. A cue can instead play a recorded effect from public/sfx
+({"sfx": "sample", "file": "1474", "trim": [0, 1.2], "align": "peak"}), and
+be placed on the voice-over rather than a beat: {"line": "reads", "frame": 3}
+is 3 frames after that line starts (src/sound/<Id>.timeline.json).
 
   python sound.py src/sound/Guessing.json out.wav            # music + effects
   python sound.py src/sound/Guessing.json out.wav --sfx-only # effects only
@@ -17,11 +21,14 @@ Everything is synthesised here (no samples), so it is ours to use anywhere.
 import json
 import sys
 import wave
+from pathlib import Path
 
 import numpy as np
 from scipy import signal
+from scipy.io import wavfile
 
 SR = 48000
+FPS = 30
 RNG = np.random.default_rng(7)
 
 # ── Basics ────────────────────────────────────────────────────────────
@@ -324,7 +331,24 @@ def sfx_snap():
     return stereo(x * 0.8) + verb(stereo(x * 0.2))
 
 
+SFX_DIR = Path(__file__).parent / 'public' / 'sfx'
+
+
+def sfx_sample(c):
+    """A recorded effect (48 kHz stereo WAV made by prepare.mjs), optionally trimmed, with a short fade out."""
+    sr, x = wavfile.read(SFX_DIR / f"{c['file']}.wav")
+    assert sr == SR, f"{c['file']}: {sr} Hz"
+    x = x.astype(float) / 32768
+    if 'trim' in c:
+        a, b = c['trim']
+        x = x[int(a * SR): int(b * SR)]
+    fade = min(len(x), int(c.get('fade', 0.08) * SR))
+    x[len(x) - fade:] *= np.linspace(1, 0, fade)[:, None]
+    return x
+
+
 SFX = {
+    'sample': sfx_sample,
     'impact': lambda c: sfx_impact(c.get('big', 1.0)),
     'hit': lambda c: sfx_hit(),
     'whoosh': lambda c: sfx_whoosh(c.get('seconds', 0.7), c.get('up', True), *c.get('pan', [-0.7, 0.7])),
@@ -443,15 +467,23 @@ def score(spec):
     return mix, beat, total
 
 
-def effects(spec, beat, total):
+def effects(spec, beat, total, timeline):
     bus = np.zeros((total, 2))
     for c in spec['cues']:
         clip = SFX[c['sfx']](c)
-        at = c['beat'] * beat
-        if ALIGN.get(c['sfx']) == 'end':
+        if 'line' in c:
+            at = (timeline[c['line']]['at'] + c.get('frame', 0)) / FPS
+        elif 'frame' in c:
+            at = c['frame'] / FPS
+        else:
+            at = c['beat'] * beat
+        align = c.get('align', ALIGN.get(c['sfx']))
+        if align == 'end':
             at -= len(clip) / SR
-        elif ALIGN.get(c['sfx']) == 'mid':
+        elif align == 'mid':
             at -= len(clip) / SR / 2
+        elif align == 'peak':
+            at -= np.abs(clip).max(axis=1).argmax() / SR
         place(bus, clip * 10 ** (c.get('gain', 0) / 20), at)
     return bus
 
@@ -468,11 +500,14 @@ def limit(x, ceiling=0.89):
 
 
 def main():
-    spec = json.load(open(sys.argv[1], encoding='utf-8'))
+    spec_path = Path(sys.argv[1])
+    spec = json.loads(spec_path.read_text(encoding='utf-8'))
+    timeline_path = spec_path.with_name(f'{spec_path.stem}.timeline.json')
+    timeline = json.loads(timeline_path.read_text(encoding='utf-8')) if timeline_path.exists() else {}
     out = sys.argv[2]
     sfx_only = '--sfx-only' in sys.argv
     music, beat, total = score(spec)
-    sfx = effects(spec, beat, total)
+    sfx = effects(spec, beat, total, timeline)
     music *= 10 ** (spec.get('music_gain', -3) / 20)
     mix = sfx if sfx_only else music + sfx
     mix = hp(mix, 32)

@@ -346,7 +346,7 @@ export const SAFE = { top: 250, bottom: 1480 };
  * The closing frame: the crescent draws itself with a bloom, the wordmark
  * rises letter by letter, a light sweep crosses it, then tagline and footer.
  */
-export function Finale(props: { at: number; tagline: string; theme: "dark" | "light"; footer?: string; glow?: string }) {
+export function Finale(props: { at: number; tagline: string; theme: "dark" | "light"; footer?: string; glow?: string; badge?: boolean }) {
   const f = useCurrentFrame();
   const { at, theme } = props;
   const ink = theme === "dark" ? C.cream : C.ink;
@@ -385,7 +385,7 @@ export function Finale(props: { at: number; tagline: string; theme: "dark" | "li
       </div>
       <MaskText lines={[props.tagline]} at={at + 18} size={64} weight={500} color={ink} tracking={-0.02} style={{ position: "absolute", top: 930, width: "100%" }} />
       <MaskText
-        lines={[props.footer ?? "Coming soon on Google Play"]}
+        lines={[props.footer ?? "Available now on Google Play"]}
         at={at + 26}
         size={36}
         weight={500}
@@ -393,6 +393,12 @@ export function Finale(props: { at: number; tagline: string; theme: "dark" | "li
         tracking={0}
         style={{ position: "absolute", top: 1040, width: "100%", opacity: 0.6 }}
       />
+      {/* Google's badge, unaltered (its own clear space is in the image) */}
+      {props.badge ? (
+        <Pop at={at + 34} from={0.85} style={{ position: "absolute", top: 1110, width: "100%", display: "flex", justifyContent: "center" }}>
+          <Img src={staticFile("brand/google-play-badge.png")} style={{ width: 517, height: 200 }} />
+        </Pop>
+      ) : null}
     </AbsoluteFill>
   );
 }

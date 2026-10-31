@@ -1,0 +1,58 @@
+{
+  "voice": {
+    "name": "af_heart",
+    "speed": 0.94,
+    "lead": 0.3,
+    "lines": [
+      { "id": "shelf", "text": "Your shelf is full.", "pause": 0.15 },
+      { "id": "feed", "text": "Your feed says, buy one more.", "pause": 0.2 },
+      { "id": "layer", "text": "So you layer it on,", "pause": 0.05 },
+      { "id": "hope", "text": "and hope.", "pause": 0.6 },
+      { "id": "reads", "text": "ClearSkin AI reads your skin from one scan.", "pause": 0.2 },
+      { "id": "nine", "text": "Nine measurements of your skin.", "pause": 0.35 },
+      { "id": "routine", "text": "A routine built for what it finds.", "pause": 0.3 },
+      { "id": "change", "text": "And see what's really changing.", "pause": 0.6 },
+      { "id": "brand", "text": "ClearSkin AI. Available now on Google Play.", "pause": 1.6 }
+    ]
+  },
+  "bpm": 120,
+  "beats": 40,
+  "tail": 0.8,
+  "music_gain": -7,
+  "octave": 50,
+  "bars": ["Dmaj7", "Bm7", "Gmaj7", "Asus4", "Dmaj7", "Bm7", "Gmaj7", "A", "Gmaj7", "Dmaj7"],
+  "sections": [
+    { "from": 0, "to": 9.2, "pad": 0.5, "pluck": 0.3, "cutoff": [450, 1100] },
+    { "from": 9.2, "to": 11.8, "pad": 0.45, "cutoff": [1100, 280] },
+    { "from": 11.8, "to": 29.4, "pad": 0.5, "pluck": 0.5, "bass": 0.6, "kick": 0.75, "hat": 0.45, "clap": 0.35, "cutoff": [1300, 2800] },
+    { "from": 30.07, "to": 40, "pad": 0.55, "pluck": 0.25, "cutoff": [2400, 800] }
+  ],
+  "gaps": [[29.4, 30.07]],
+  "cues": [
+    { "sfx": "sample", "file": "852", "frame": 0, "trim": [0.4, 2.6], "gain": -9 },
+    { "sfx": "sample", "file": "1474", "line": "feed", "frame": -1, "align": "peak", "trim": [0.2, 2.4], "gain": -11 },
+    { "sfx": "sample", "file": "3215", "line": "feed", "frame": 22, "align": "peak", "gain": -15 },
+    { "sfx": "sample", "file": "166", "line": "layer", "frame": -1, "align": "peak", "gain": -11 },
+    { "sfx": "sample", "file": "135", "line": "layer", "frame": 4, "trim": [0.3, 1.5], "gain": -14 },
+    { "sfx": "sample", "file": "175", "line": "hope", "align": "peak", "gain": -12 },
+    { "sfx": "sample", "file": "175", "line": "hope", "frame": 19, "align": "peak", "gain": -14 },
+    { "sfx": "sample", "file": "790", "line": "reads", "align": "peak", "gain": -7 },
+    { "sfx": "sample", "file": "1437", "line": "reads", "frame": 4, "trim": [0.3, 1.6], "gain": -5 },
+    { "sfx": "sample", "file": "2847", "line": "reads", "frame": 14, "gain": -9 },
+    { "sfx": "sample", "file": "2847", "line": "reads", "frame": 44, "gain": -12 },
+    { "sfx": "sample", "file": "1133", "line": "reads", "frame": 78, "align": "peak", "gain": -3 },
+    { "sfx": "sample", "file": "1489", "line": "nine", "frame": -4, "align": "peak", "gain": -9 },
+    { "sfx": "sample", "file": "2568", "line": "nine", "frame": 22, "gain": -9 },
+    { "sfx": "sample", "file": "2568", "line": "nine", "frame": 27, "gain": -10 },
+    { "sfx": "sample", "file": "2568", "line": "nine", "frame": 32, "gain": -11 },
+    { "sfx": "sample", "file": "2867", "line": "nine", "frame": 40, "gain": -12 },
+    { "sfx": "sample", "file": "1474", "line": "routine", "frame": -2, "align": "peak", "trim": [0.2, 2.4], "gain": -12 },
+    { "sfx": "sample", "file": "1120", "line": "routine", "frame": 4, "align": "peak", "gain": -2 },
+    { "sfx": "sample", "file": "1120", "line": "routine", "frame": 28, "align": "peak", "gain": -2 },
+    { "sfx": "sample", "file": "1120", "line": "routine", "frame": 46, "align": "peak", "gain": -2 },
+    { "sfx": "sample", "file": "2621", "line": "change", "frame": -1, "gain": 2 },
+    { "sfx": "sample", "file": "1489", "line": "change", "frame": 39, "align": "peak", "gain": -12 },
+    { "sfx": "sample", "file": "2902", "line": "brand", "align": "peak", "gain": -3 },
+    { "sfx": "sample", "file": "2358", "line": "brand", "frame": 52, "gain": -13 }
+  ]
+}

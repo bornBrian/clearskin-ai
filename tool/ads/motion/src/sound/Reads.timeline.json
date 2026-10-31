@@ -1,0 +1,59 @@
+{
+  "shelf": {
+    "at": 9,
+    "end": 43,
+    "seconds": 0.3,
+    "file": "vo/Reads/shelf.wav"
+  },
+  "feed": {
+    "at": 47,
+    "end": 98,
+    "seconds": 1.576,
+    "file": "vo/Reads/feed.wav"
+  },
+  "layer": {
+    "at": 104,
+    "end": 137,
+    "seconds": 3.468,
+    "file": "vo/Reads/layer.wav"
+  },
+  "hope": {
+    "at": 139,
+    "end": 159,
+    "seconds": 4.624,
+    "file": "vo/Reads/hope.wav"
+  },
+  "reads": {
+    "at": 177,
+    "end": 260,
+    "seconds": 5.915,
+    "file": "vo/Reads/reads.wav"
+  },
+  "nine": {
+    "at": 266,
+    "end": 312,
+    "seconds": 8.87,
+    "file": "vo/Reads/nine.wav"
+  },
+  "routine": {
+    "at": 323,
+    "end": 377,
+    "seconds": 10.754,
+    "file": "vo/Reads/routine.wav"
+  },
+  "change": {
+    "at": 386,
+    "end": 433,
+    "seconds": 12.873,
+    "file": "vo/Reads/change.wav"
+  },
+  "brand": {
+    "at": 451,
+    "end": 545,
+    "seconds": 15.03,
+    "file": "vo/Reads/brand.wav"
+  },
+  "_end": {
+    "at": 593
+  }
+}

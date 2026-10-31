@@ -1,0 +1,137 @@
+{
+  "couch": {
+    "clip": "100059.mp4",
+    "from": 0.4,
+    "seconds": 3.0,
+    "x": 0.18,
+    "zoom": 1.15,
+    "y": 0.55,
+    "screen": "green",
+    "content": [
+      {
+        "flow": "phone/follow/couch",
+        "from": 24,
+        "seconds": 3.0
+      }
+    ],
+    "follow": "today"
+  },
+  "hero": {
+    "clip": "42636.mp4",
+    "from": 0.2,
+    "seconds": 6.6,
+    "x": 0.43,
+    "zoom": 0.66,
+    "screen": "blue",
+    "backdrop": [
+      "#F1F4EF",
+      "#DCE5DA"
+    ],
+    "content": [
+      {
+        "flow": "phone/scan",
+        "seconds": 3.55
+      },
+      {
+        "flow": "phone/report",
+        "from": 8,
+        "seconds": 3.05,
+        "speed": 0.85
+      }
+    ]
+  },
+  "routine": {
+    "clip": "28300.mp4",
+    "from": 0.6,
+    "seconds": 3.1,
+    "x": 0.5,
+    "zoom": 0.74,
+    "screen": "green",
+    "backdrop": [
+      "#F5ECDA",
+      "#EADCC0"
+    ],
+    "content": [
+      {
+        "flow": "phone/follow/routine",
+        "from": 24,
+        "seconds": 3.1
+      }
+    ],
+    "follow": "routine"
+  },
+  "alarm": {
+    "clip": "42621.mp4",
+    "from": 0.5,
+    "seconds": 4.25,
+    "x": 0.47,
+    "zoom": 1.15,
+    "y": 0.25,
+    "screen": "green",
+    "content": [
+      {
+        "flow": "phone/reminders",
+        "from": 10,
+        "seconds": 4.25
+      }
+    ]
+  },
+  "guides": {
+    "clip": "100091.mp4",
+    "from": 0.0,
+    "seconds": 5.2,
+    "speed": 0.45,
+    "x": 0.66,
+    "zoom": 1.0,
+    "screen": "green",
+    "content": [
+      {
+        "flow": "phone/guides",
+        "from": 20,
+        "seconds": 5.2,
+        "speed": 0
+      }
+    ],
+    "occluders": false
+  },
+  "progress": {
+    "clip": "28300.mp4",
+    "from": 7.4,
+    "seconds": 3.1,
+    "x": 0.5,
+    "zoom": 0.8,
+    "screen": "green",
+    "backdrop": [
+      "#2B2B28",
+      "#1A1A18"
+    ],
+    "content": [
+      {
+        "flow": "phone/follow/progress",
+        "from": 24,
+        "seconds": 3.1
+      }
+    ],
+    "follow": "progress"
+  },
+  "poster": {
+    "clip": "42636.mp4",
+    "from": 1.6,
+    "seconds": 0.4,
+    "x": 0.43,
+    "zoom": 0.74,
+    "screen": "blue",
+    "backdrop": [
+      "#232321",
+      "#1B1B19"
+    ],
+    "content": [
+      {
+        "flow": "phone/report",
+        "from": 74,
+        "seconds": 0.4,
+        "speed": 0
+      }
+    ]
+  }
+}
