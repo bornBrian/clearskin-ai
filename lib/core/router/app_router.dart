@@ -25,6 +25,7 @@ import '../../features/progress/progress_screen.dart';
 import '../../features/routine/routine_screen.dart';
 import '../../features/scan/scan_capture_screen.dart';
 import '../../features/scan/scan_result_screen.dart';
+import '../../features/share/invite_screen.dart';
 import '../../features/settings/edit_profile_screen.dart';
 import '../../features/settings/reminders_screen.dart';
 import '../../features/settings/settings_screen.dart';
@@ -247,6 +248,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings/reminders',
         parentNavigatorKey: _rootKey,
         builder: (_, _) => const RemindersScreen(),
+      ),
+      GoRoute(
+        path: '/invite',
+        parentNavigatorKey: _rootKey,
+        builder: (_, _) => const InviteScreen(),
       ),
       GoRoute(
         path: '/settings/profile',

@@ -14,8 +14,6 @@ import '../data/models/account_status.dart';
 import '../data/models/chat.dart';
 import '../data/models/profile.dart';
 import '../data/models/scan.dart';
-import '../domain/scan/skin_maps.dart';
-import '../domain/scan/skin_measure.dart';
 import 'security_service.dart';
 
 enum ApiErrorKind {
@@ -26,6 +24,22 @@ enum ApiErrorKind {
   notConfigured,
   untrusted,
   server,
+}
+
+class ReferralStatus {
+  const ReferralStatus({
+    required this.code,
+    required this.rewarded,
+    required this.redeemed,
+  });
+
+  final String code;
+
+  /// Friends who scanned with this code (each earned a free scan).
+  final int rewarded;
+
+  /// This account has already used a friend's code.
+  final bool redeemed;
 }
 
 class ApiException implements Exception {
@@ -108,65 +122,35 @@ class BackendApi {
     });
   }
 
-  /// Words for a scan measured on the phone. Only the numbers go up, never
-  /// the photo; the server looks the advice up with Google Search behind a
-  /// small, low-cost model. Best effort: on any failure the phone's own
-  /// result is returned unchanged.
-  Future<SkinAnalysis> explainMeasurement({
-    required SkinAnalysis analysis,
-    required SkinMeasure measure,
-    required Radiance radiance,
-    required UserProfile profile,
-  }) async {
-    if (Env.aiDemo || !Env.hasBackend) return analysis;
-    try {
-      final data = await _invoke('skin-insight', {
-        'profile': profile.toAiContext(),
-        'radiance': radiance.toJson(),
-        'metrics': [for (final m in analysis.metrics) m.toJson()],
-        'measure': measure.toJson(),
-      }, timeout: const Duration(seconds: 25));
-      final j = data['insight'];
-      if (j is! Map<String, dynamic>) return analysis;
-      List<String> strings(String k) => [
-        for (final v in (j[k] as List? ?? const []))
-          if (v is String && v.trim().isNotEmpty) v.trim(),
-      ];
-      List<IngredientTip> tips(String k) => [
-        for (final v in (j[k] as List? ?? const []))
-          if (v is Map<String, dynamic>) IngredientTip.fromJson(v),
-      ];
-      final summary = j['summary'];
-      return SkinAnalysis(
-        usable: analysis.usable,
-        qualityIssues: analysis.qualityIssues,
-        overallScore: analysis.overallScore,
-        metrics: analysis.metrics,
-        skinTypeEstimate: analysis.skinTypeEstimate,
-        summary: summary is String && summary.trim().isNotEmpty
-            ? summary.trim()
-            : analysis.summary,
-        strengths: strings('strengths').isEmpty
-            ? analysis.strengths
-            : strings('strengths'),
-        priorities: strings('priorities').isEmpty
-            ? analysis.priorities
-            : strings('priorities'),
-        findings: analysis.findings,
-        recommendedIngredients: tips('recommended_ingredients').isEmpty
-            ? analysis.recommendedIngredients
-            : tips('recommended_ingredients'),
-        ingredientsToAvoid: tips('ingredients_to_avoid'),
-        redFlags: analysis.redFlags,
-        model: analysis.model,
-        focus: analysis.focus,
-        beyondProducts: tips('beyond_products'),
-        disclaimer: analysis.disclaimer,
-      );
-    } on Object catch (e) {
-      debugPrint('skin-insight failed: $e');
-      return analysis;
+  /// This account's invite code, how many friends have earned it a scan,
+  /// and whether it has used a friend's code. Null when offline.
+  Future<ReferralStatus?> referralStatus() async {
+    if (!Env.hasBackend) {
+      return const ReferralStatus(code: 'CSK7QA', rewarded: 0, redeemed: false);
     }
+    try {
+      final data = await _invoke('referral', const {
+        'action': 'status',
+      }, timeout: const Duration(seconds: 15));
+      return ReferralStatus(
+        code: data['code'] as String? ?? '',
+        rewarded: (data['rewarded'] as num?)?.toInt() ?? 0,
+        redeemed: data['redeemed'] == true,
+      );
+    } on ApiException catch (e) {
+      debugPrint('referral status failed: ${e.message}');
+      return null;
+    }
+  }
+
+  /// Uses a friend's invite code. Throws [ApiException] with a message
+  /// ready to show (wrong code, own code, already used, account too old).
+  Future<void> redeemReferral(String code) async {
+    if (!Env.hasBackend) return;
+    await _invoke('referral', {
+      'action': 'redeem',
+      'code': code.trim().toUpperCase(),
+    }, timeout: const Duration(seconds: 15));
   }
 
   /// Plan, scan allowance and shop links, as the server sees them. Null in

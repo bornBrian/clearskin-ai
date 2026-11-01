@@ -31,7 +31,9 @@ import 'package:clearskin_ai/features/checkin/checkin_screen.dart';
 import 'package:clearskin_ai/features/coach/coach_screen.dart';
 import 'package:clearskin_ai/features/products/product_detail_screen.dart';
 import 'package:clearskin_ai/features/settings/settings_screen.dart';
+import 'package:clearskin_ai/features/share/invite_screen.dart';
 import 'package:clearskin_ai/services/auth_service.dart';
+import 'package:clearskin_ai/services/backend_api.dart';
 import 'package:clearskin_ai/domain/premium/renewal.dart';
 import 'package:clearskin_ai/domain/routine/routine_engine.dart';
 import 'package:clearskin_ai/features/onboarding/medical_disclaimer_screen.dart';
@@ -359,6 +361,12 @@ class _Account extends AccountNotifier {
   Future<Account?> build() async => null;
 }
 
+class _SignedIn extends AccountNotifier {
+  @override
+  Future<Account?> build() async =>
+      const Account(provider: 'google', email: 'amara@example.com');
+}
+
 class _Purchases extends PurchasesService {
   @override
   Future<List<Plan>> plans() async => const [
@@ -428,6 +436,7 @@ Widget _app({
   UserProfile? profile,
   bool dark = false,
   List<dynamic> extra = const [],
+  bool signedIn = false,
 }) {
   final router = GoRouter(initialLocation: initial, routes: routes);
   return ProviderScope(
@@ -440,7 +449,7 @@ Widget _app({
       chatProvider.overrideWith(_Chat.new),
       hydrationSettingsProvider.overrideWith(_Hydration.new),
       waterTodayProvider.overrideWith(_Water.new),
-      accountProvider.overrideWith(_Account.new),
+      accountProvider.overrideWith(signedIn ? _SignedIn.new : _Account.new),
       previousOpenProvider.overrideWith(
         (ref) async => _now.subtract(const Duration(hours: 20)),
       ),
@@ -988,6 +997,27 @@ void main() {
         ],
       ),
       '15-reminders',
+    );
+  });
+
+  testWidgets('40 invite', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [GoRoute(path: '/', builder: (_, _) => const InviteScreen())],
+        signedIn: true,
+        extra: [
+          referralStatusProvider.overrideWith(
+            (_) async => const ReferralStatus(
+              code: 'K7QAMX',
+              rewarded: 2,
+              redeemed: false,
+            ),
+          ),
+        ],
+      ),
+      '40-invite',
     );
   });
 

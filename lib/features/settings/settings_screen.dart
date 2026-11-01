@@ -174,6 +174,13 @@ class SettingsScreen extends ConsumerWidget {
               );
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.card_giftcard_rounded),
+            title: const Text('Invite a friend'),
+            subtitle: const Text('You both get a free scan'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push('/invite'),
+          ),
           section('Reminders'),
           ListTile(
             leading: const Icon(Icons.notifications_none_rounded),

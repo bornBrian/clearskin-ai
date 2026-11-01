@@ -28,6 +28,7 @@ import {
   reserveUsage,
 } from "../_shared/common.ts";
 import { integrityEnforced, requireIntegrity } from "../_shared/integrity.ts";
+import { rewardReferral } from "../_shared/referral.ts";
 import { ANALYSIS_SCHEMA, ANALYSIS_SYSTEM_PROMPT, DISCLAIMER, ISSUE_KEYS, METRIC_KEYS } from "./prompt.ts";
 
 // A 1024 px JPEG is ~150 KB and base64 adds a third; a scan is up to three
@@ -238,6 +239,7 @@ Deno.serve(async (req) => {
     // the user a scan. The cost was already recorded in onUsage; the scan
     // is refunded here and still counts towards the daily attempt cap.
     if (!analysis.image_quality.usable) await releaseUsage(eventId);
+    else await rewardReferral(userId);
     reservation = undefined;
 
     return json({

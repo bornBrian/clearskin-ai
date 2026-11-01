@@ -41,9 +41,11 @@ One list of events and definitions, shared by product, growth and engineering. I
 | Monetisation | `out_of_scans` |  | Free-limit pressure |
 | Monetisation | `shop_link_opened` | `source`, `store` | Shop revenue potential |
 | Referral | `share_card_shared` | `style`, `format` or `days` | Organic sharing |
+| Referral | `invite_shared` |  | Invites sent |
+| Referral | `invite_redeemed` |  | Friend codes entered (rewards are paid server-side after the friend's first usable scan; see `referrals.rewarded_at`) |
 | Quality | `app_error` | `type`, `message` (capped), `stack` (capped), `context` | Crash-free sessions |
 
-Server-side, every AI call is written to `usage_events` with its model, tokens, cost in dollars and kind (`scan`, `coach`, `insight`). This is kept apart from user analytics, as the playbook requires. Daily spend alerts go to the function logs at 50% and 80% of `DAILY_SPEND_LIMIT_USD` (search for "SPEND ALERT"). New AI calls stop at 100%.
+Server-side, every AI call is written to `usage_events` with its model, tokens, cost in dollars and kind (`scan`, `coach`). This is kept apart from user analytics, as the playbook requires. Daily spend alerts go to the function logs at 50% and 80% of `DAILY_SPEND_LIMIT_USD` (search for "SPEND ALERT"). New AI calls stop at 100%.
 
 ## Where installs come from (acquisition)
 
@@ -57,7 +59,7 @@ Every Google Play link on the websites carries a UTM referrer, so **Play Console
 
 For social posts, use the same pattern, e.g. Instagram bio:
 `https://play.google.com/store/apps/details?id=com.clearskinai.app&referrer=utm_source%3Dinstagram%26utm_medium%3Dsocial`
-TikTok: `utm_source%3Dtiktok`, WhatsApp: `utm_source%3Dwhatsapp`, each creator: `utm_source%3Dcreator_<name>`.
+TikTok: `utm_source%3Dtiktok`, WhatsApp: `utm_source%3Dwhatsapp`, each creator: `utm_source%3Dcreator_<name>`. In-app invites use `utm_source%3Dreferral%26utm_campaign%3D<code>` automatically.
 
 ## Weekly dashboard (PostHog)
 

@@ -28,6 +28,8 @@ enum Ev {
   checkInSaved('checkin_saved'),
   productAdded('product_added'),
   shareCardShared('share_card_shared'),
+  inviteShared('invite_shared'),
+  inviteRedeemed('invite_redeemed'),
   coachMessageSent('coach_message_sent'),
   tipOpened('tip_opened'),
   rewardedResult('rewarded_result'),

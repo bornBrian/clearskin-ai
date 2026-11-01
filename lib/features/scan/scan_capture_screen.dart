@@ -472,10 +472,9 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
     }
   }
 
-  /// Builds the result from the phone's own measurement of the photo, then
-  /// asks the server for a cheap, text-only explanation of those numbers
-  /// when it can be reached. False when the photo can't be measured (no
-  /// face landmarks), so the caller shows the error instead.
+  /// Builds the result from the phone's own measurement of the photo: no AI,
+  /// no network. False when the photo can't be measured (no face
+  /// landmarks), so the caller shows the error instead.
   Future<bool> _scanOnDevice(ProcessedPhoto photo, ApiErrorKind why) async {
     final geometry = _geometry;
     final profile = ref.read(profileProvider).value;
@@ -487,18 +486,8 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
       await File(path).delete().catchError((_) => File(path));
       return false;
     }
-    var analysis = OnDeviceAnalysis.build(maps, profile);
+    final analysis = OnDeviceAnalysis.build(maps, profile);
     final measure = SkinMeasure.of(maps);
-    if (why != ApiErrorKind.offline) {
-      analysis = await ref
-          .read(backendApiProvider)
-          .explainMeasurement(
-            analysis: analysis,
-            measure: measure,
-            radiance: maps.radiance,
-            profile: profile,
-          );
-    }
     for (final s in _sides) {
       ref.read(photoServiceProvider).discard(s);
     }
@@ -984,7 +973,7 @@ class _ConsentView extends StatelessWidget {
               ),
               point(
                 Icons.cloud_sync_outlined,
-                'For analysis, your photo is sent encrypted to our AI provider and processed in real time. We don\'t store it or use it to train AI. If that can\'t be reached, your phone measures the photo itself and only the numbers are sent.',
+                'For analysis, your photo is sent encrypted to our AI provider and processed in real time. We don\'t store it or use it to train AI. If that can\'t be reached, your phone measures the photo itself.',
               ),
               point(
                 Icons.location_off_outlined,
