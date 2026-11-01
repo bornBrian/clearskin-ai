@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config/env.dart';
 import '../../core/providers.dart';
+import '../../services/telemetry.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 
@@ -39,6 +40,7 @@ class _MedicalDisclaimerScreenState
   Future<void> _accept() async {
     setState(() => _busy = true);
     HapticFeedback.mediumImpact();
+    ref.read(telemetryProvider).track(Ev.consentGiven, {'kind': 'medical'});
     await ref.read(disclaimerProvider.notifier).accept();
   }
 

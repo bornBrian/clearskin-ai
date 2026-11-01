@@ -1,3 +1,4 @@
+import 'package:clearskin_ai/services/telemetry.dart';
 import 'package:clearskin_ai/core/providers.dart';
 import 'package:clearskin_ai/core/router/app_router.dart';
 import 'package:clearskin_ai/core/theme/app_theme.dart';
@@ -67,6 +68,7 @@ void main() {
     final kv = _MemoryKv();
     final container = ProviderContainer(
       overrides: [
+        telemetryProvider.overrideWithValue(Telemetry.noop()),
         kvProvider.overrideWithValue(kv),
         authServiceProvider.overrideWith((ref) => _Google(kv)),
         profileProvider.overrideWith(_NoProfile.new),

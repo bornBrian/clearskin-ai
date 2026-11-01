@@ -98,6 +98,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   @override
   void initState() {
     super.initState();
+    ref.read(telemetryProvider).track(Ev.onboardingStarted);
     // Already signed in (say the app closed during setup): never the
     // welcome or sign-in screen again, straight on with the setup.
     if (ref.read(accountProvider).value != null) {

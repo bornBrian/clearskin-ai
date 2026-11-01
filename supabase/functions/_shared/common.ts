@@ -285,6 +285,25 @@ export function costUsd(u: ClaudeUsage): number {
 }
 
 let spendCache: { usd: number; at: number } | undefined;
+let warnedAt: { day: string; level: number } | undefined;
+
+/** Early warnings before the hard stop: one "SPEND ALERT" log line per level
+ * (SPEND_ALERT_LEVELS, default 50% and 80% of the limit) per UTC day, per
+ * function instance. Search the function logs for "SPEND ALERT". */
+export function spendWarning(usd: number, limit: number): number | undefined {
+  const levels = (Deno.env.get("SPEND_ALERT_LEVELS") ?? "0.5,0.8")
+    .split(",")
+    .map(Number)
+    .filter((n) => n > 0 && n < 1)
+    .sort((a, b) => b - a);
+  const level = levels.find((l) => usd >= limit * l);
+  if (level === undefined) return undefined;
+  const day = new Date().toISOString().slice(0, 10);
+  if (warnedAt && warnedAt.day === day && warnedAt.level >= level) return undefined;
+  warnedAt = { day, level };
+  console.warn(`SPEND ALERT: AI spend today $${usd.toFixed(2)} passed ${level * 100}% of the $${limit} daily limit`);
+  return level;
+}
 
 /**
  * Circuit breaker: once today's total AI spend passes DAILY_SPEND_LIMIT_USD,
@@ -304,6 +323,7 @@ export async function requireSpendHeadroom(): Promise<void> {
       return;
     }
     spendCache = { usd: Number(data ?? 0), at: Date.now() };
+    spendWarning(spendCache.usd, limit);
   }
   if (spendCache.usd >= limit) {
     console.error(`Daily AI spend limit reached: $${spendCache.usd.toFixed(2)} >= $${limit}`);

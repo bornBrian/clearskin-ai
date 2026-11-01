@@ -99,7 +99,10 @@ void main() {
         usableScans: const [],
         now: DateTime(2026, 1, 15),
       );
-      expect((week3.week, week3.phase.name, week3.isNewWeek), (3, 'Treat', true));
+      expect(
+        (week3.week, week3.phase.name, week3.isNewWeek),
+        (3, 'Treat', true),
+      );
 
       final done = JourneyEngine.build(
         profile: p,
@@ -191,6 +194,7 @@ void main() {
       int streak = 0,
       bool checkedIn = true,
       int? uv,
+      int scans = 3,
     }) => NudgeContext(
       now: now,
       profile: profile(),
@@ -204,10 +208,25 @@ void main() {
       checkedInToday: checkedIn,
       uvIndex: uv,
       journey: null,
+      scanCount: scans,
     );
 
     List<NudgeKind> kinds(NudgeContext c) =>
         NudgeEngine.pick(c).map((n) => n.kind).toList();
+
+    test('the second scan is named for what it shows: change', () {
+      Nudge scanNudge(int scans) => NudgeEngine.pick(
+        ctx(
+          now: DateTime(2026, 3, 9, 9),
+          previousOpen: DateTime(2026, 3, 8),
+          lastScan: DateTime(2026, 3, 1),
+          scans: scans,
+        ),
+      ).firstWhere((n) => n.kind == NudgeKind.scanDue);
+      expect(scanNudge(1).title, 'Your second scan');
+      expect(scanNudge(1).body, contains('shows change'));
+      expect(scanNudge(4).title, 'Scan day');
+    });
 
     test('welcomes people back after three quiet days, first', () {
       final now = DateTime(2026, 3, 2, 9); // Monday

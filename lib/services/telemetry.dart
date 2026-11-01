@@ -12,6 +12,8 @@ import '../data/repositories/repositories.dart';
 /// Funnel and health events. Names are stable: dashboards depend on them.
 enum Ev {
   appOpen('app_open'),
+  onboardingStarted('onboarding_started'),
+  consentGiven('consent_given'),
   onboardingComplete('onboarding_complete'),
   planRevealView('plan_reveal_view'),
   paywallView('paywall_view'),
@@ -20,6 +22,7 @@ enum Ev {
   scanAutoCaptured('scan_auto_captured'),
   scanQualityIssue('scan_quality_issue'),
   scanCompleted('scan_completed'),
+  scanResultViewed('scan_result_viewed'),
   scanFailed('scan_failed'),
   routineCompleted('routine_completed'),
   checkInSaved('checkin_saved'),
@@ -91,6 +94,8 @@ class Telemetry {
         r'$process_person_profile': false,
         'platform': defaultTargetPlatform.name,
         'app_version': Env.appVersion,
+        // Language and region setting ("en-TZ"), to read results by market.
+        'locale': PlatformDispatcher.instance.locale.toLanguageTag(),
         ...props,
       },
     });

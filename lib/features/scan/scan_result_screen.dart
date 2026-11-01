@@ -16,9 +16,11 @@ import '../../data/models/profile.dart';
 import '../../data/models/scan.dart';
 import '../../domain/guidance/potential.dart';
 import '../../domain/journey/journey_engine.dart';
+import '../../domain/scan/on_device_analysis.dart';
 import '../../domain/scan/skin_maps.dart';
 import '../../domain/shop/shop_links.dart';
 import '../progress/progress_proof.dart';
+import '../../services/telemetry.dart';
 import '../share/share_card.dart';
 import '../shop/shop_link.dart';
 import 'face_map.dart';
@@ -39,8 +41,24 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
   void initState() {
     super.initState();
     if (widget.fresh) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAskReview());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _trackViewed();
+        _maybeAskReview();
+      });
     }
+  }
+
+  /// The activation moment: someone has seen a result. scan_number tells a
+  /// first result from the second one, the step that makes a habit.
+  void _trackViewed() {
+    final scans = ref.read(scansProvider).value ?? const <SkinScan>[];
+    final scan = scans.where((s) => s.id == widget.scanId).firstOrNull;
+    if (scan == null) return;
+    ref.read(telemetryProvider).track(Ev.scanResultViewed, {
+      'scan_number': scans.length,
+      'on_device': scan.analysis.model == OnDeviceAnalysis.model,
+      'usable': scan.analysis.usable,
+    });
   }
 
   void _maybeAskReview() {

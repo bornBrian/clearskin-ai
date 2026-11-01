@@ -51,6 +51,7 @@ class NudgeContext {
     required this.checkedInToday,
     required this.uvIndex,
     required this.journey,
+    this.scanCount = 0,
   });
 
   final DateTime now;
@@ -67,6 +68,10 @@ class NudgeContext {
   final bool checkedInToday;
   final int? uvIndex;
   final Journey? journey;
+
+  /// Scans taken so far. The second one gets its own words: it's the scan
+  /// that first shows change, and the step that turns a try into a habit.
+  final int scanCount;
 }
 
 /// Picks the in-app alerts that matter right now: aware of the time of day,
@@ -79,10 +84,7 @@ abstract final class NudgeEngine {
     final today = Dates.startOfDay(x.now);
 
     List<RoutineStep> required(RoutineSlot s) =>
-        x.routine
-            ?.stepsFor(s, x.now)
-            .where((st) => !st.optional)
-            .toList() ??
+        x.routine?.stepsFor(s, x.now).where((st) => !st.optional).toList() ??
         const [];
     int left(RoutineSlot s, Set<String> done) =>
         required(s).where((st) => !done.contains(st.id)).length;
@@ -129,9 +131,15 @@ abstract final class NudgeEngine {
       out.add(
         Nudge(
           kind: NudgeKind.scanDue,
-          title: daysSinceScan == null ? 'Take your first scan' : 'Scan day',
+          title: daysSinceScan == null
+              ? 'Take your first scan'
+              : x.scanCount == 1
+              ? 'Your second scan'
+              : 'Scan day',
           body: daysSinceScan == null
               ? 'Your baseline makes every result measurable.'
+              : x.scanCount == 1
+              ? 'The one that shows change. Same light and angle as your first.'
               : 'Same light, same angle. See this week\'s change.',
           route: '/scan',
           action: 'Scan',

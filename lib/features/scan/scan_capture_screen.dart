@@ -43,6 +43,9 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
   ProcessedPhoto? _photo;
   List<Offset> _facePoints = const [];
   FaceGeometry? _geometry;
+
+  /// When the photo went off for analysis: time-to-result for the funnel.
+  DateTime _analyzingSince = DateTime(2000);
   LiveFaceGuide? _guide;
   final Set<SkinIssue> _issues = {};
 
@@ -150,6 +153,7 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
 
   Future<void> _acceptConsent() async {
     await ref.read(kvProvider).set(KvKeys.photoConsent, '1');
+    ref.read(telemetryProvider).track(Ev.consentGiven, {'kind': 'photos'});
     setState(() => _phase = _Phase.issues);
   }
 
@@ -387,6 +391,7 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
   }
 
   Future<void> _analyze(ProcessedPhoto photo) async {
+    _analyzingSince = clock.now();
     setState(() {
       _phase = _Phase.analyzing;
       _photo = photo;
@@ -430,6 +435,9 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
         'score': analysis.overallScore,
         'usable': analysis.usable,
         'red_flags': analysis.redFlags.length,
+        'on_device': false,
+        'scan_number': (ref.read(scansProvider).value ?? const []).length,
+        'ms': clock.now().difference(_analyzingSince).inMilliseconds,
       });
       context.pushReplacement('/scan/$id?fresh=1');
     } on ApiException catch (e) {
@@ -512,6 +520,8 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
       'usable': true,
       'on_device': true,
       'reason': why.name,
+      'scan_number': (ref.read(scansProvider).value ?? const []).length,
+      'ms': clock.now().difference(_analyzingSince).inMilliseconds,
     });
     if (!mounted) return true;
     HapticFeedback.heavyImpact();
@@ -974,7 +984,7 @@ class _ConsentView extends StatelessWidget {
               ),
               point(
                 Icons.cloud_sync_outlined,
-                'For analysis, your photo is sent encrypted to our AI provider and processed in real time. We don\'t store it on our servers or use it to train AI.',
+                'For analysis, your photo is sent encrypted to our AI provider and processed in real time. We don\'t store it or use it to train AI. If that can\'t be reached, your phone measures the photo itself and only the numbers are sent.',
               ),
               point(
                 Icons.location_off_outlined,

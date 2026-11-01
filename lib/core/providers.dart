@@ -756,6 +756,7 @@ final nudgesProvider = Provider<List<Nudge>>((ref) {
       completedDays: ref.watch(completedDaysProvider),
       streak: ref.watch(streakProvider),
       lastScanAt: ref.watch(latestScanProvider)?.createdAt,
+      scanCount: ref.watch(scansProvider).value?.length ?? 0,
       previousOpenAt: ref.watch(previousOpenProvider).value,
       checkedInToday: ref.watch(todayCheckInProvider) != null,
       uvIndex: ref.watch(weatherProvider).value?.uvIndexMax.round(),

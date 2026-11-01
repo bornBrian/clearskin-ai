@@ -1,3 +1,4 @@
+import 'package:clearskin_ai/services/telemetry.dart';
 import 'package:clearskin_ai/core/providers.dart';
 import 'package:clearskin_ai/core/theme/app_theme.dart';
 import 'package:clearskin_ai/data/repositories/repositories.dart';
@@ -46,6 +47,7 @@ Future<void> _pump(
 ) async {
   final container = ProviderContainer(
     overrides: [
+      telemetryProvider.overrideWithValue(Telemetry.noop()),
       kvProvider.overrideWithValue(kv),
       accountProvider.overrideWith(() => account),
     ],
