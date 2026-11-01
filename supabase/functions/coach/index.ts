@@ -21,6 +21,7 @@ import {
   requireUser,
   reserveUsage,
 } from "../_shared/common.ts";
+import { grounded, groundingAvailable } from "../_shared/grounded.ts";
 import { requireIntegrity } from "../_shared/integrity.ts";
 
 const RequestSchema = z.object({
@@ -96,7 +97,32 @@ Deno.serve(async (req) => {
         "You've reached today's coach limit. It resets at midnight UTC.",
       );
     }
-    reservation = r.eventId;
+    const eventId = r.eventId;
+    reservation = eventId;
+
+    // First choice when it's set up: a small Gemini model that checks its
+    // answer against live Google Search. Several times cheaper than Claude
+    // and grounded in current sources (which the user doesn't see). Any
+    // failure falls through to Claude, so the coach never goes down with it.
+    if (groundingAvailable() && Deno.env.get("COACH_GROUNDED") !== "off") {
+      try {
+        const answer = await grounded({
+          system: `${SYSTEM_PROMPT}
+
+Use Google Search to check facts against current, evidence-based guidance. Never mention searching, sources, links or that you are an AI.
+
+CONTEXT:
+${JSON.stringify(context).slice(0, 12000)}`,
+          turns: messages.map((m) => ({ role: m.role === "user" ? "user" : "model", text: m.content })),
+          maxTokens: 1200,
+        });
+        await finishUsage(eventId, answer.usage);
+        reservation = undefined;
+        return json({ reply: answer.text });
+      } catch (err) {
+        console.warn("Grounded coach failed, using Claude", err instanceof Error ? err.message : err);
+      }
+    }
 
     // Three cache breakpoints: the instructions (shared by every user), the
     // user's context (stable through a conversation), and the conversation
@@ -142,7 +168,7 @@ Deno.serve(async (req) => {
       mapClaudeError(err);
     }
 
-    await finishUsage(reservation, { model: message.model, ...message.usage });
+    await finishUsage(eventId, { model: message.model, ...message.usage });
     reservation = undefined;
 
     if (message.stop_reason === "refusal") {

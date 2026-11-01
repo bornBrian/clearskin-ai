@@ -74,6 +74,17 @@ abstract final class SkinLensStore {
     }
   }
 
+  /// The full measurement of a just-taken photo, for building a result on
+  /// the phone when the AI analysis can't be reached.
+  static Future<SkinMaps?> maps(String path, FaceGeometry g) async {
+    try {
+      return await Isolate.run(() => _measure(path, g));
+    } catch (e) {
+      debugPrint('Skin measurement failed: $e');
+      return null;
+    }
+  }
+
   static LensImages? _remember(String path, LensImages? v) {
     _done[path] = v;
     while (_done.length > _keep) {

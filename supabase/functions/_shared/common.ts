@@ -195,7 +195,7 @@ export async function isPremium(userId: string): Promise<boolean> {
 
 // ── Usage reservations (atomic quotas, see the SQL migration) ─────────
 
-export type UsageKind = "scan" | "coach";
+export type UsageKind = "scan" | "coach" | "insight";
 
 export interface Reservation {
   eventId: number;
@@ -239,6 +239,8 @@ export interface ClaudeUsage {
   output_tokens?: number | null;
   cache_read_input_tokens?: number | null;
   cache_creation_input_tokens?: number | null;
+  /** Per-request charges on top of tokens (Google Search grounding). */
+  extra_usd?: number | null;
 }
 
 /** Marks a reservation as spent and records what it cost. */
@@ -268,15 +270,17 @@ const PRICES: Record<string, [number, number, number]> = {
   "claude-opus-5-5": [4, 20, 0.2],
   "claude-sonnet-5-5": [2, 10, 0.2],
   "claude-haiku-5-5": [0.1, 0.5, 0.01],
+  "gemini-2.5-flash": [0.3, 2.5, 0.03],
+  "gemini-2.5-pro": [1.25, 10, 0.31],
 };
 
 export function costUsd(u: ClaudeUsage): number {
   const key = Object.keys(PRICES).find((k) => u.model.startsWith(k));
   const [inp, out, read] = key ? PRICES[key] : [4, 20, 0.4];
   const usd = ((u.input_tokens ?? 0) * inp +
-    (u.cache_creation_input_tokens ?? 0) * inp * 1.25 +
-    (u.cache_read_input_tokens ?? 0) * read +
-    (u.output_tokens ?? 0) * out) / 1_000_000;
+        (u.cache_creation_input_tokens ?? 0) * inp * 1.25 +
+        (u.cache_read_input_tokens ?? 0) * read +
+        (u.output_tokens ?? 0) * out) / 1_000_000 + (u.extra_usd ?? 0);
   return Math.round(usd * 1_000_000) / 1_000_000;
 }
 

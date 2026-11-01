@@ -18,10 +18,13 @@ import '../../data/repositories/repositories.dart';
 import '../../services/backend_api.dart';
 import '../../domain/scan/face_zones.dart';
 import '../../domain/scan/live_guidance.dart';
+import '../../domain/scan/on_device_analysis.dart';
+import '../../domain/scan/skin_measure.dart';
 import '../../services/photo_service.dart';
 import '../../services/telemetry.dart';
 import '../paywall/out_of_scans_sheet.dart';
 import 'live_face_guide.dart';
+import 'skin_lens.dart';
 
 enum _Phase { gate, consent, issues, camera, checking, analyzing }
 
@@ -443,6 +446,13 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
           }
         case ApiErrorKind.badImage:
           showSnack(context, e.message);
+        case ApiErrorKind.offline ||
+            ApiErrorKind.server ||
+            ApiErrorKind.notConfigured:
+          // The analysis can't be reached: measure on the phone instead.
+          if (await _scanOnDevice(photo, e.kind)) return;
+          if (!mounted) return;
+          await _showError(e.message);
         default:
           await _showError(e.message);
       }
@@ -452,6 +462,61 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
       setState(() => _phase = _Phase.camera);
       await _initCamera();
     }
+  }
+
+  /// Builds the result from the phone's own measurement of the photo, then
+  /// asks the server for a cheap, text-only explanation of those numbers
+  /// when it can be reached. False when the photo can't be measured (no
+  /// face landmarks), so the caller shows the error instead.
+  Future<bool> _scanOnDevice(ProcessedPhoto photo, ApiErrorKind why) async {
+    final geometry = _geometry;
+    final profile = ref.read(profileProvider).value;
+    if (geometry == null || profile == null) return false;
+    final id = newId();
+    final path = await ref.read(photoServiceProvider).persist(photo, id);
+    final maps = await SkinLensStore.maps(path, geometry);
+    if (maps == null) {
+      await File(path).delete().catchError((_) => File(path));
+      return false;
+    }
+    var analysis = OnDeviceAnalysis.build(maps, profile);
+    final measure = SkinMeasure.of(maps);
+    if (why != ApiErrorKind.offline) {
+      analysis = await ref
+          .read(backendApiProvider)
+          .explainMeasurement(
+            analysis: analysis,
+            measure: measure,
+            radiance: maps.radiance,
+            profile: profile,
+          );
+    }
+    for (final s in _sides) {
+      ref.read(photoServiceProvider).discard(s);
+    }
+    await ref
+        .read(scansProvider.notifier)
+        .add(
+          SkinScan(
+            id: id,
+            createdAt: clock.now(),
+            photoPath: path,
+            analysis: analysis,
+            face: geometry,
+            radiance: maps.radiance,
+            measure: measure,
+          ),
+        );
+    ref.read(telemetryProvider).track(Ev.scanCompleted, {
+      'score': analysis.overallScore,
+      'usable': true,
+      'on_device': true,
+      'reason': why.name,
+    });
+    if (!mounted) return true;
+    HapticFeedback.heavyImpact();
+    context.pushReplacement('/scan/$id?fresh=1');
+    return true;
   }
 
   Future<void> _showError(String message) => showDialog<void>(
