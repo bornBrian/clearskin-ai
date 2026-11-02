@@ -68,6 +68,9 @@ abstract final class KvKeys {
   static const accountStatus = 'account_status_v1';
   static const streakCelebrated = 'streak_celebrated_day';
 
+  /// ThemeMode.name: 'system' (follow the phone), 'light' or 'dark'.
+  static const appearance = 'appearance';
+
   /// '1' once the person has shared their invite code.
   static const inviteShared = 'invite_shared';
 

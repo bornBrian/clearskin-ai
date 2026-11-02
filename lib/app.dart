@@ -144,7 +144,7 @@ class _ClearSkinAppState extends ConsumerState<ClearSkinApp>
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
+      themeMode: ref.watch(themeModeProvider),
       routerConfig: router,
       builder: (context, child) {
         // Respect user font scaling but cap it so layouts stay intact.

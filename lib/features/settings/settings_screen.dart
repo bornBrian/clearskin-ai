@@ -36,6 +36,65 @@ String _planLine(SubscriptionInfo? sub) {
   return sub.willRenew ? 'Renews $date' : 'Ends $date. Tap to renew';
 }
 
+String _appearanceLabel(ThemeMode m) => switch (m) {
+  ThemeMode.system => 'Match phone',
+  ThemeMode.light => 'Light',
+  ThemeMode.dark => 'Dark',
+};
+
+/// Match phone (the default), light or dark. The app switches as soon as
+/// one is picked.
+void _pickAppearance(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    builder: (_) => Consumer(
+      builder: (context, ref, _) => RadioGroup<ThemeMode>(
+        groupValue: ref.watch(themeModeProvider),
+        onChanged: (m) {
+          if (m == null) return;
+          ref.read(themeModeProvider.notifier).set(m);
+          Navigator.pop(context);
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: Space.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  Space.gutter,
+                  0,
+                  Space.gutter,
+                  Space.xs,
+                ),
+                child: Text('Appearance', style: context.text.titleLarge),
+              ),
+              const RadioListTile<ThemeMode>(
+                value: ThemeMode.system,
+                controlAffinity: ListTileControlAffinity.trailing,
+                title: Text('Match phone'),
+                subtitle: Text('Light or dark, as your phone is set'),
+              ),
+              const RadioListTile<ThemeMode>(
+                value: ThemeMode.light,
+                controlAffinity: ListTileControlAffinity.trailing,
+                title: Text('Light'),
+              ),
+              const RadioListTile<ThemeMode>(
+                value: ThemeMode.dark,
+                controlAffinity: ListTileControlAffinity.trailing,
+                title: Text('Dark'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -180,6 +239,13 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: const Text('You both get a free scan'),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => context.push('/invite'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.dark_mode_outlined),
+            title: const Text('Appearance'),
+            subtitle: Text(_appearanceLabel(ref.watch(themeModeProvider))),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _pickAppearance(context),
           ),
           section('Reminders'),
           ListTile(

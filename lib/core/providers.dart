@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:clock/clock.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -167,6 +168,30 @@ class PremiumNotifier extends Notifier<bool> {
 
 final premiumProvider = NotifierProvider<PremiumNotifier, bool>(
   PremiumNotifier.new,
+);
+
+/// The saved appearance, read in main() before the first frame so the app
+/// never flashes the wrong theme.
+final initialThemeModeProvider = Provider<ThemeMode>((_) => ThemeMode.system);
+
+/// Light, dark, or (the default) whatever the phone is set to.
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() => ref.read(initialThemeModeProvider);
+
+  Future<void> set(ThemeMode mode) async {
+    state = mode;
+    await ref.read(kvProvider).set(KvKeys.appearance, mode.name);
+  }
+
+  static ThemeMode parse(String? saved) => ThemeMode.values.firstWhere(
+    (m) => m.name == saved,
+    orElse: () => ThemeMode.system,
+  );
+}
+
+final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
+  ThemeModeNotifier.new,
 );
 
 /// Free-tier limits. The server enforces AI limits independently (and is

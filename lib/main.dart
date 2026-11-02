@@ -76,6 +76,7 @@ Future<void> main() async {
   }
 
   final startLocked = await kv.get(KvKeys.appLock) == '1';
+  final themeMode = ThemeModeNotifier.parse(await kv.get(KvKeys.appearance));
 
   runApp(
     ProviderScope(
@@ -84,6 +85,7 @@ Future<void> main() async {
         purchasesServiceProvider.overrideWithValue(purchases),
         notificationServiceProvider.overrideWithValue(notifications),
         telemetryProvider.overrideWithValue(telemetry),
+        initialThemeModeProvider.overrideWithValue(themeMode),
       ],
       child: ClearSkinApp(startLocked: startLocked),
     ),
