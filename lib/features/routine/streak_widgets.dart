@@ -11,6 +11,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/config/app_store.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/utils/dates.dart';
@@ -215,13 +216,14 @@ class _MonthRing extends CustomPainter {
 }
 
 /// The milestone moment: the card, one line, the saver they earned (if
-/// any), and a share button. Shown once per day at most.
-Future<void> showStreakCelebration(
+/// any), and a share button. Shown once per day at most. Completes with
+/// true when a free user chose to see Premium.
+Future<bool?> showStreakCelebration(
   BuildContext context, {
   required StreakState state,
 }) {
   HapticFeedback.heavyImpact();
-  return showModalBottomSheet<void>(
+  return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -257,7 +259,8 @@ class _CelebrationState extends ConsumerState<_Celebration> {
         ShareParams(
           files: [XFile(file.path, mimeType: 'image/png')],
           text:
-              '${widget.state.current} days of skincare in a row with ClearSkin AI.',
+              '${widget.state.current} days of skincare in a row with ClearSkin AI. '
+              'Try it: ${AppStore.listing('share_streak')}',
         ),
       );
       ref.read(telemetryProvider).track(Ev.shareCardShared, {
@@ -331,6 +334,16 @@ class _CelebrationState extends ConsumerState<_Celebration> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Done'),
           ),
+          // A week of real use is when Premium makes sense: offered here,
+          // gently, rather than behind a lock.
+          if (s.current >= 7 && !ref.watch(premiumProvider))
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: cream.withValues(alpha: 0.7),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Keep it going with Premium'),
+            ),
         ],
       ),
     );

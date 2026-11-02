@@ -22,6 +22,12 @@ abstract final class AppStore {
       ? 'App Store purchases aren\'t available. Check you\'re signed in to the App Store and in-app purchases are allowed in Screen Time.'
       : 'Google Play billing isn\'t available. Make sure the Play Store is installed, up to date and signed in.';
 
+  /// The app's Play listing, tagged so Play Console counts installs by
+  /// [source] (and [campaign], e.g. an invite code).
+  static String listing(String source, {String? campaign}) =>
+      'https://play.google.com/store/apps/details?id=com.clearskinai.app'
+      '&referrer=${Uri.encodeComponent('utm_source=$source${campaign == null ? '' : '&utm_campaign=$campaign'}')}';
+
   /// The store's page for this app's subscription. [managementUrl] is the
   /// one RevenueCat reports, when there is one; [productId] picks the plan
   /// on Google Play ("premium_monthly:monthly" is sub:base plan).

@@ -22,6 +22,7 @@ import '../guides/guides_screen.dart';
 import '../guides/water_screen.dart';
 import '../routine/routine_screen.dart';
 import '../scan/first_scan_card.dart';
+import 'get_started.dart';
 import '../tips/tips_widgets.dart';
 
 class TodayScreen extends ConsumerWidget {
@@ -81,6 +82,7 @@ class TodayScreen extends ConsumerWidget {
                         const SizedBox(height: Space.md),
                         const _PlanCard(),
                         const SizedBox(height: Space.xl),
+                        const GetStartedCard(),
                         const WaterCard(),
                         const SizedBox(height: Space.xl),
                         const _Forecast(),
@@ -584,8 +586,14 @@ class _MoreRows extends ConsumerWidget {
           title: 'Ask your skin coach',
           subtitle: premium ? 'Knows your skin and routine' : 'Premium',
           trailing: chevron,
-          divider: false,
           onTap: () => context.push('/coach'),
+        ),
+        LineItem(
+          title: 'Invite a friend',
+          subtitle: 'You both get a free scan',
+          trailing: chevron,
+          divider: false,
+          onTap: () => context.push('/invite'),
         ),
       ],
     );

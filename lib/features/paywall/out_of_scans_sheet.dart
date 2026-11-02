@@ -11,10 +11,10 @@ import '../../data/models/account_status.dart';
 import '../../services/ads_service.dart';
 import '../../services/telemetry.dart';
 
-enum OutOfScansChoice { premium, video }
+enum OutOfScansChoice { premium, video, invite }
 
-/// Shown when a free user has used this month's scans: go Premium, or
-/// watch one short video for one more scan.
+/// Shown when a free user has used this month's scans: go Premium, watch
+/// one short video for one more scan, or invite a friend for one.
 Future<OutOfScansChoice?> showOutOfScansSheet(
   BuildContext context,
   AccountStatus? status,
@@ -104,6 +104,17 @@ class _OutOfScans extends StatelessWidget {
                 ),
               ),
             ],
+            const SizedBox(height: Space.xs),
+            Center(
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: cream.withValues(alpha: 0.8),
+                ),
+                onPressed: () =>
+                    Navigator.pop(context, OutOfScansChoice.invite),
+                child: const Text('Invite a friend: you both get a free scan'),
+              ),
+            ),
           ],
         ),
       ),

@@ -29,6 +29,7 @@ One list of events and definitions, shared by product, growth and engineering. I
 | Activation | `scan_completed` | `score`, `usable`, `red_flags` (count), `on_device`, `reason` (if on-device), `scan_number`, `ms` (time to result) | Scan success, time to value, how often the phone fallback is used |
 | Activation | `scan_failed` | `kind`: offline, server, badImage, quotaExceeded, premiumRequired... | Failure reasons to fix |
 | Activation | `scan_result_viewed` | `scan_number`, `on_device`, `usable` | **Activation**: `scan_number = 1` is first value, `scan_number = 2` is the second-scan habit |
+| Activation | `get_started_tapped` | `step`: scan, routine, checkin, product, invite; `done` (steps done before the tap) | Which first-week features people discover from the Today checklist |
 | Retention | `routine_completed` | `slot`: am / pm | Routine adherence |
 | Retention | `checkin_saved` | `tags` (count) | Journal use |
 | Retention | `tip_opened` | `id` (tip or `guide_<id>`) | Which education gets read |
@@ -59,7 +60,7 @@ Every Google Play link on the websites carries a UTM referrer, so **Play Console
 
 For social posts, use the same pattern, e.g. Instagram bio:
 `https://play.google.com/store/apps/details?id=com.clearskinai.app&referrer=utm_source%3Dinstagram%26utm_medium%3Dsocial`
-TikTok: `utm_source%3Dtiktok`, WhatsApp: `utm_source%3Dwhatsapp`, each creator: `utm_source%3Dcreator_<name>`. In-app invites use `utm_source%3Dreferral%26utm_campaign%3D<code>` automatically.
+TikTok: `utm_source%3Dtiktok`, WhatsApp: `utm_source%3Dwhatsapp`, each creator: `utm_source%3Dcreator_<name>`. In-app invites use `utm_source%3Dreferral%26utm_campaign%3D<code>` automatically; shared score cards use `utm_source%3Dshare_card` and streak cards `utm_source%3Dshare_streak`.
 
 ## Weekly dashboard (PostHog)
 

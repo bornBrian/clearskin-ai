@@ -68,6 +68,12 @@ abstract final class KvKeys {
   static const accountStatus = 'account_status_v1';
   static const streakCelebrated = 'streak_celebrated_day';
 
+  /// '1' once the person has shared their invite code.
+  static const inviteShared = 'invite_shared';
+
+  /// '1' once the Get started checklist is hidden.
+  static const getStartedHidden = 'get_started_hidden';
+
   /// Body size and activity for the water target (HydrationSettings).
   static const hydration = 'hydration_v1';
 

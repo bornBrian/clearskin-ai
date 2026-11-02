@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/config/app_store.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
@@ -101,7 +102,8 @@ class _ShareSheetState extends ConsumerState<_ShareSheet> {
         ShareParams(
           files: [XFile(file.path, mimeType: 'image/png')],
           text:
-              'My skin score: ${a.overallScore}. Scan yours free with ClearSkin AI.',
+              'My skin score: ${a.overallScore}. Scan yours free with ClearSkin AI: '
+              '${AppStore.listing('share_card')}',
         ),
       );
       if (!mounted) return;

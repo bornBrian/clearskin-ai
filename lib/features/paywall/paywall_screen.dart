@@ -52,6 +52,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     'scan' => 'Scan every week.\nWatch it change.',
     'products' => 'Check everything\nyou own.',
     'renewal' => 'Keep your\nprogress going.',
+    'streak' => 'You showed up.\nKeep it going.',
     'ads' => 'No ads.\nJust your skin.',
     _ => 'Everything your\nskin plan needs.',
   };

@@ -30,6 +30,7 @@ enum Ev {
   shareCardShared('share_card_shared'),
   inviteShared('invite_shared'),
   inviteRedeemed('invite_redeemed'),
+  getStartedTapped('get_started_tapped'),
   coachMessageSent('coach_message_sent'),
   tipOpened('tip_opened'),
   rewardedResult('rewarded_result'),

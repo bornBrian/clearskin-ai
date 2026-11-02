@@ -4,11 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/config/app_store.dart';
 import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
+import '../../data/repositories/repositories.dart';
 import '../../services/backend_api.dart';
 import '../../services/telemetry.dart';
+import '../home/get_started.dart';
 
 final referralStatusProvider = FutureProvider.autoDispose<ReferralStatus?>(
   (ref) => ref.read(backendApiProvider).referralStatus(),
@@ -21,8 +24,7 @@ class InviteScreen extends ConsumerStatefulWidget {
 
   /// The store link, tagged so Play Console can count invited installs.
   static String link(String code) =>
-      'https://play.google.com/store/apps/details?id=com.clearskinai.app'
-      '&referrer=utm_source%3Dreferral%26utm_campaign%3D$code';
+      AppStore.listing('referral', campaign: code);
 
   static String message(String code) =>
       'I check my skin with ClearSkin AI. Get it here: ${link(code)}\n'
@@ -45,6 +47,8 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
 
   Future<void> _share(String code) async {
     ref.read(telemetryProvider).track(Ev.inviteShared);
+    await ref.read(kvProvider).set(KvKeys.inviteShared, '1');
+    ref.invalidate(getStartedFlagsProvider);
     await SharePlus.instance.share(
       ShareParams(text: InviteScreen.message(code)),
     );

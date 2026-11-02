@@ -57,7 +57,11 @@ Future<void> toggleRoutineStep(
   if (Streaks.milestones.contains(streak.current) && !celebrated) {
     unawaited(kv.set(KvKeys.streakCelebrated, today));
     if (!context.mounted) return;
-    await showStreakCelebration(context, state: streak);
+    final wantsPremium = await showStreakCelebration(context, state: streak);
+    if (wantsPremium == true && context.mounted) {
+      await context.push('/paywall?source=streak');
+      return;
+    }
     if (streak.current == 7 || streak.current == 30) {
       unawaited(ref.read(reviewServiceProvider).maybePrompt());
     }

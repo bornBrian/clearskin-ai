@@ -141,6 +141,10 @@ class _ScanCaptureScreenState extends ConsumerState<ScanCaptureScreen>
         return bought == true || ref.read(premiumProvider);
       case OutOfScansChoice.video:
         return earnScanWithVideo(ref, context);
+      case OutOfScansChoice.invite:
+        // The free scan arrives after the friend's first scan, not now.
+        await context.push('/invite');
+        return false;
       case null:
         return false;
     }

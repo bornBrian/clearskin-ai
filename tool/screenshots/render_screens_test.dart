@@ -24,6 +24,7 @@ import 'package:clearskin_ai/domain/scan/face_zones.dart';
 import 'package:clearskin_ai/domain/scan/skin_maps.dart';
 import 'package:clearskin_ai/domain/scan/skin_measure.dart';
 import 'package:clearskin_ai/features/auth/auth_screen.dart';
+import 'package:clearskin_ai/features/home/get_started.dart';
 import 'package:clearskin_ai/features/home/today_screen.dart';
 import 'package:clearskin_ai/features/journey/journey_screen.dart';
 import 'package:clearskin_ai/features/settings/reminders_screen.dart';
@@ -456,6 +457,9 @@ Widget _app({
       purchasesServiceProvider.overrideWithValue(_Purchases()),
       // No ad network in renders.
       showAdsProvider.overrideWithValue(false),
+      getStartedFlagsProvider.overrideWith(
+        (ref) async => (hidden: false, invited: false),
+      ),
       ...extra.cast(),
       notificationServiceProvider.overrideWithValue(NotificationService()),
       telemetryProvider.overrideWithValue(Telemetry.noop()),
@@ -1018,6 +1022,29 @@ void main() {
         ],
       ),
       '40-invite',
+    );
+  });
+
+  testWidgets('41 get started', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const Scaffold(
+              body: SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: GetStartedCard(),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      '41-get-started',
     );
   });
 
