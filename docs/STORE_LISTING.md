@@ -5,12 +5,12 @@ Paste into Play Console → Grow → Store presence → Main store listing.
 **App name (30 chars):** ClearSkin AI: Skin Scan & Care
 
 **Short description (80 chars):**
-Scan your face, get a skin score and a routine that fits. Track real progress.
+Your personal skin progress companion: scan, get a routine, see real change.
 
 **Full description (≤4000 chars):**
 
 ```
-Know your skin. Fix what matters. See real progress.
+Your personal skin progress companion.
 
 ClearSkin AI measures your skin from a guided face scan, builds a routine around it and shows you what is actually changing. Made for every skin tone and every gender.
 
@@ -35,11 +35,14 @@ Score trends, a private photo timeline and before-and-after comparisons.
 Ask the skin coach
 Questions answered from your scans, your routine and the products you own.
 
+Invite a friend
+Share your code. When your friend finishes their first scan, you both get a free scan.
+
 Daily skin forecast
 UV, humidity and air quality for your city, turned into one line of advice for today.
 
 Private by design
-Your photos are stored on your phone. Photos sent for analysis are never stored on our servers, sold or shown to advertisers, and never used to train AI. Location data is stripped. Optional fingerprint or face lock. Export or delete everything at any time.
+Your photos are stored on your phone. Photos sent for analysis are never stored on our servers, sold or shown to advertisers, and never used to train AI. Location data is stripped. Optional fingerprint or face lock. Light or dark mode, or match your phone. Export or delete everything at any time.
 
 Free and Premium
 Free: 2 AI skin scans every 30 days, your routine, reminders and streaks, with ads. Watch an optional video for one extra scan.
@@ -53,8 +56,9 @@ ClearSkin AI gives cosmetic guidance and is not a medical device. It does not di
 **Category:** Beauty
 **Tags:** Skin care, Beauty, Self-care (pick the closest Play offers, up to 5)
 **Contact email:** britech.apps@gmail.com
-**Website:** https://bornbrian.github.io/clearskin/
-**Privacy policy:** https://bornbrian.github.io/clearskin/privacy.html
+**Website:** https://clearskin.britechapps.com
+**Privacy policy:** https://clearskin.britechapps.com/privacy.html
+**Account deletion page:** https://clearskin.britechapps.com/delete-account.html
 
 ## Graphics (all in `docs/store/`)
 

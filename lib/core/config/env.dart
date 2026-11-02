@@ -34,11 +34,11 @@ abstract final class Env {
 
   static const privacyPolicyUrl = String.fromEnvironment(
     'PRIVACY_URL',
-    defaultValue: 'https://bornbrian.github.io/clearskin/privacy.html',
+    defaultValue: 'https://clearskin.britechapps.com/privacy.html',
   );
   static const termsUrl = String.fromEnvironment(
     'TERMS_URL',
-    defaultValue: 'https://bornbrian.github.io/clearskin/terms.html',
+    defaultValue: 'https://clearskin.britechapps.com/terms.html',
   );
   static const supportEmail = String.fromEnvironment(
     'SUPPORT_EMAIL',

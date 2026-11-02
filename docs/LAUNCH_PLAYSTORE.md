@@ -40,7 +40,6 @@ Server settings that matter (all in `supabase/functions/.env.example`):
 |---|---|---|
 | `DAILY_SPEND_LIMIT_USD` | 25 | Hard stop on AI cost per day. Raise as revenue grows |
 | `CLAUDE_MODEL` / `CLAUDE_FALLBACK_MODEL` | `claude-opus-5-5` / `claude-sonnet-5-5` | Fallback kicks in automatically when the main model is overloaded or down |
-| `GEMINI_API_KEY` | empty | Optional third provider. Paid tier only; add Google to the privacy policy first |
 | `FREE_SCANS_PER_WINDOW` / `FREE_SCAN_WINDOW_DAYS` | 2 / 30 | Free plan, counted per account **and** per device |
 | `REWARDED_SCANS_PER_DAY` | 1 | Extra scans from rewarded videos |
 | `SCAN_ATTEMPTS_PER_DAY` / `COACH_ATTEMPTS_PER_DAY` | 10 / 80 | Cap on tries per account or device, including refunded unusable photos |
@@ -155,8 +154,8 @@ Copy from `docs/STORE_LISTING.md`. Assets: icon 512×512, feature graphic 1024×
 
 ## 8. Policy forms ⚠️ (Play Console → App content)
 
-- **Privacy policy URL** — required.
-- **App access** — an account is required (created right after the intro). Choose "All or some functionality is restricted" and tell reviewers: *"Tap Get started → Next through the intro → Continue with Google, using any Google account. No invitation or test credentials are needed."* Google sign-in must work on Play's app-signing key before you submit, or the review fails.
+- **Privacy policy URL** — `https://clearskin.britechapps.com/privacy.html`.
+- **App access** — an account is required (created right after the intro). Choose "All or some functionality is restricted" and tell reviewers: *"Tap Get started → Next through the intro → Continue with Google, using any Google account, or Continue with email and enter the 6-digit code we send. No invitation or test credentials are needed."* Google sign-in must work on Play's app-signing key before you submit, or the review fails.
 - **Ads** — Yes, the app contains ads (free users).
 - **Content rating** — complete IARC questionnaire (no violence etc.) → likely "Everyone"/"PEGI 3".
 - **Target audience** — 13+ (select 13–15, 16–17, 18+). Do NOT select under-13 (Families policy). Because 13–17 is included, avoid any mature content; the app has none.
@@ -169,15 +168,29 @@ Copy from `docs/STORE_LISTING.md`. Assets: icon 512×512, feature graphic 1024×
   - *Photos* also covers the two side views; all are processed ephemerally and never shared.
   - *Personal info → Email address and Name* — only if the person signs in with Google or e-mail. Purpose: Account management. Not shared.
   - *Purchase history* — via Google Play/RevenueCat.
-  - Data encrypted in transit: Yes. Users can request deletion: Yes (in-app).
-- **Account deletion** — in-app path: Settings → Delete account & all data. Also provide a web URL (a simple page with instructions + support email) — Play requires a web link too.
+  - *Location → Approximate location* — only if the person adds a city: its coordinates go to the weather provider for the daily forecast. Optional, not shared, purpose App functionality.
+  - *App activity → App interactions* and *App info and performance → Crash logs, Diagnostics* — anonymous usage events and crash reports to PostHog (EU). Optional (Settings switch), not shared, purpose Analytics.
+  - *Personal info → User IDs* — also covers invite codes and who invited whom (the referral reward). Not shared, purpose App functionality and Fraud prevention.
+  - Data encrypted in transit: Yes. Users can request deletion: Yes (in-app and by email).
+- **Account deletion** — in-app path: Settings → Delete account & all data. Web URL: `https://clearskin.britechapps.com/delete-account.html` (steps, what is deleted, what is kept and for how long).
 - **Government apps / financial / news** — not applicable.
 
 ## 9. Testing tracks
 
 1. **Internal testing** (instant, up to 100 testers) — upload the AAB, add yourself as license tester (Settings → License testing) to test purchases free.
 2. **Closed testing** — 12+ testers opted in for **14 consecutive days** (personal accounts created after Nov 2023), then apply for production; Google's review of that application usually takes up to 7 days. Start this as early as possible; it is the longest lead time in the whole launch.
-3. **Production** — staged rollout 20% → 50% → 100%.
+3. **Apply for production** (Dashboard → Apply for production, once the 14 days are done). Google asks about the closed test. Draft answers; edit with what really happened:
+   - *How did you recruit testers?* "Classmates from my practical-training group and friends, invited through a WhatsApp group and in person. All use Android phones daily."
+   - *How easy was it to recruit?* "Easy: they are people I study with and they were interested in a skin-care app."
+   - *How did testers use the app?* "Daily: the morning and evening routine with reminders, a face scan at the start and after about a week, the daily check-in and product barcode checks."
+   - *What feedback did you get, and how did you collect it?* "Through WhatsApp and conversations. [List 2–3 real points, e.g. scan guidance in dim light, a wording change, a crash fixed.]"
+   - *What did you change?* "[Matching fixes, with the version they shipped in.]"
+   - *Who is the app for?* "People aged 13 and over who want clearer, healthier skin and a simple routine, starting with Tanzania and East Africa, worldwide in English."
+   - *How does it provide value?* "It measures the skin from a guided scan, builds a routine around the result, checks products against the user's skin, and shows progress over weeks. Scans also work on the phone without the AI."
+   - *How many installs in the first year?* Give an honest range, e.g. "10,000–50,000".
+   - *Is the app ready for production?* "Yes: changes from testing are in, all automated tests pass, and the policies and Data safety form are complete."
+   Google usually replies within 7 days. Keep the closed test running while you wait.
+4. **Production** — staged rollout 20% → 50% → 100%. Switch `INTEGRITY_MODE` to `enforce` the same day.
 
 Test on a real device: scan in good/bad light, product barcode (try a CeraVe/La Roche-Posay barcode), OCR label, reminders after reboot, app lock, purchase + restore, delete account.
 
