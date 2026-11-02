@@ -88,6 +88,22 @@ final _profile = UserProfile(
   createdAt: DateTime(2026, 9, 1),
 );
 
+/// The same person on their second day, when Get started still shows.
+final _newProfile = UserProfile(
+  name: _profile.name,
+  gender: _profile.gender,
+  ageRange: _profile.ageRange,
+  skinType: _profile.skinType,
+  sensitivity: _profile.sensitivity,
+  concerns: _profile.concerns,
+  goals: _profile.goals,
+  complexity: _profile.complexity,
+  budget: _profile.budget,
+  skinTone: _profile.skinTone,
+  location: _profile.location,
+  createdAt: _now.subtract(const Duration(days: 1)),
+);
+
 SkinAnalysis _analysis(int base) => SkinAnalysis(
   usable: true,
   qualityIssues: const [],
@@ -740,7 +756,12 @@ void main() {
   testWidgets('03 today first run', (t) async {
     await _shot(
       t,
-      _app(initial: '/today', routes: _shellRoutes(), withScans: false),
+      _app(
+        initial: '/today',
+        routes: _shellRoutes(),
+        withScans: false,
+        profile: _newProfile,
+      ),
       '03-today-first-run',
     );
   });
@@ -801,6 +822,55 @@ void main() {
         ],
       ),
       '06-paywall',
+    );
+  });
+
+  testWidgets('42 scan report, just scanned', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/scan/s6',
+        routes: [
+          GoRoute(
+            path: '/scan/:id',
+            builder: (_, s) =>
+                ScanResultScreen(scanId: s.pathParameters['id']!, fresh: true),
+          ),
+        ],
+      ),
+      '42-scan-report-fresh',
+    );
+  });
+
+  testWidgets('43 paywall after the first scan', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const PaywallScreen(source: 'first_scan'),
+          ),
+        ],
+      ),
+      '43-paywall-first-scan',
+    );
+  });
+
+  testWidgets('44 paywall from the coach', (t) async {
+    await _shot(
+      t,
+      _app(
+        initial: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const PaywallScreen(source: 'coach'),
+          ),
+        ],
+      ),
+      '44-paywall-coach',
     );
   });
 
@@ -1043,6 +1113,7 @@ void main() {
             ),
           ),
         ],
+        profile: _newProfile,
       ),
       '41-get-started',
     );

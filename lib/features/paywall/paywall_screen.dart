@@ -12,6 +12,7 @@ import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/widgets.dart';
 import '../../data/repositories/repositories.dart';
+import '../../domain/guidance/potential.dart';
 import '../../services/purchases_service.dart';
 import '../../services/telemetry.dart';
 
@@ -165,8 +166,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                         height: 1.1,
                       ),
                     ),
+                    if (_potentialLine() case final line?) ...[
+                      const SizedBox(height: Space.sm),
+                      Text(
+                        line,
+                        style: context.text.bodyLarge?.copyWith(color: dim),
+                      ),
+                    ],
                     const SizedBox(height: Space.xl),
-                    const _Comparison(),
+                    _Comparison(lead: _Comparison.leadFor(widget.source)),
                     const SizedBox(height: Space.xl),
                     plans.when(
                       loading: () => const Padding(
@@ -319,6 +327,17 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     );
   }
 
+  /// Right after the first result, their own numbers: where the skin is
+  /// today and where consistent care can take it.
+  String? _potentialLine() {
+    if (widget.source != 'first_scan') return null;
+    final scan = ref.read(latestScanProvider);
+    final p = scan == null ? null : SkinPotential.of(scan.analysis);
+    if (p == null || p.gain < 3) return null;
+    return 'Your skin today: ${p.now}. Within reach in 12 weeks: '
+        '${p.potential}.';
+  }
+
   String _finePrint(Plan? p) {
     if (p == null) return '';
     if (p.prepaid) {
@@ -336,7 +355,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
 /// What Premium adds, side by side with free. Only features that are
 /// really gated are listed.
 class _Comparison extends StatelessWidget {
-  const _Comparison();
+  const _Comparison({this.lead});
+
+  /// The feature that brought them here, listed first and in bold, so
+  /// what they tapped is the first thing they see they'd get.
+  final String? lead;
 
   static const _rows = [
     ('Skin scans', '2 a month', 'Unlimited'),
@@ -346,7 +369,20 @@ class _Comparison extends StatelessWidget {
     ('Every trend', null, '✓'),
     ('Breakout triggers', null, '✓'),
     ('Product checks', '3 a day', 'Unlimited'),
+    ('Skin guides', 'Some', 'All'),
   ];
+
+  static String? leadFor(String source) => switch (source) {
+    'scan' => 'Skin scans',
+    'ads' => 'Ads',
+    'coach' => 'Skin coach',
+    'compare' => 'Before & after',
+    'trends' => 'Every trend',
+    'insights' => 'Breakout triggers',
+    'products' => 'Product checks',
+    'guides' => 'Skin guides',
+    _ => null,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +432,10 @@ class _Comparison extends StatelessWidget {
             ),
           ],
         ),
-        for (final (feature, free, premium) in _rows)
+        for (final (feature, free, premium) in [
+          ..._rows.where((r) => r.$1 == lead),
+          ..._rows.where((r) => r.$1 != lead),
+        ])
           Container(
             padding: const EdgeInsets.symmetric(vertical: 13),
             decoration: BoxDecoration(
@@ -407,7 +446,10 @@ class _Comparison extends StatelessWidget {
                 Expanded(
                   child: Text(
                     feature,
-                    style: context.text.bodyMedium?.copyWith(color: cream),
+                    style: context.text.bodyMedium?.copyWith(
+                      color: cream,
+                      fontWeight: feature == lead ? FontWeight.w700 : null,
+                    ),
                   ),
                 ),
                 cell(free),

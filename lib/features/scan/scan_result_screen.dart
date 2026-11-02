@@ -122,8 +122,35 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
     final glowFirst =
         ref.watch(journeyProvider)?.track == JourneyTrack.glow ||
         (ref.watch(profileProvider).value?.goals.contains(Goal.glow) ?? false);
+    final next = ArrowPill(
+      label: previous == null ? 'See my routine' : 'See your updated routine',
+      dark: true,
+      onTap: () => _toRoutine(first: previous == null),
+    );
 
     return Scaffold(
+      // Most people read the top of a report and stop, so a new result
+      // keeps its next step in reach instead of at the end of the page.
+      bottomNavigationBar: widget.fresh
+          ? DecoratedBox(
+              decoration: BoxDecoration(
+                color: c.background,
+                border: Border(top: BorderSide(color: c.line)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    Space.gutter,
+                    Space.sm,
+                    Space.gutter,
+                    Space.sm,
+                  ),
+                  child: next,
+                ),
+              ),
+            )
+          : null,
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: ListView(
@@ -302,14 +329,10 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> {
                         last: i == a.beyondProducts.length - 1,
                       ),
                   ],
-                  const SizedBox(height: Space.xxl),
-                  ArrowPill(
-                    label: previous == null
-                        ? 'See my routine'
-                        : 'See your updated routine',
-                    dark: true,
-                    onTap: () => _toRoutine(first: previous == null),
-                  ),
+                  if (!widget.fresh) ...[
+                    const SizedBox(height: Space.xxl),
+                    next,
+                  ],
                 ].animate(interval: 30.ms).fadeIn(duration: Motion.normal),
               ),
             ),

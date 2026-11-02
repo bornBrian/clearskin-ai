@@ -1,10 +1,12 @@
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:clock/clock.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/providers.dart';
 import '../../core/theme/tokens.dart';
@@ -93,6 +95,29 @@ class _TrendsState extends ConsumerState<_Trends> {
     final premium = ref.watch(premiumProvider);
     final c = context.colors;
 
+    // A second scan within days shows noise, not change, and spends a free
+    // scan on a disappointment. Until a week has passed, say when, and
+    // point at what does move the line.
+    final baseline = scans.firstOrNull?.createdAt;
+    final next = baseline == null
+        ? null
+        : DateTime(baseline.year, baseline.month, baseline.day + 7);
+    final waitDays = scans.length == 1
+        ? next!.difference(Dates.startOfDay(clock.now())).inDays
+        : 0;
+    if (waitDays > 0) {
+      return EmptyState(
+        icon: Icons.show_chart_rounded,
+        title: waitDays == 1
+            ? 'Your second scan is tomorrow'
+            : 'Your second scan: ${DateFormat('EEEE d MMM').format(next!)}',
+        body:
+            'Skin takes about a week to show change. Until then, your '
+            'routine is what moves this line.',
+        actionLabel: 'Today\'s routine',
+        onAction: () => context.go('/routine'),
+      );
+    }
     if (scans.length < 2) {
       return EmptyState(
         icon: Icons.show_chart_rounded,

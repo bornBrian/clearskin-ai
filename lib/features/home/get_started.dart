@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,18 +10,25 @@ import '../../data/repositories/repositories.dart';
 import '../../services/telemetry.dart';
 
 /// The two checklist facts that live in the KV store, not in the data.
-final getStartedFlagsProvider =
-    FutureProvider<({bool hidden, bool invited})>((ref) async {
-      final kv = ref.watch(kvProvider);
-      return (
-        hidden: await kv.get(KvKeys.getStartedHidden) == '1',
-        invited: await kv.get(KvKeys.inviteShared) == '1',
-      );
-    });
+final getStartedFlagsProvider = FutureProvider<({bool hidden, bool invited})>((
+  ref,
+) async {
+  final kv = ref.watch(kvProvider);
+  return (
+    hidden: await kv.get(KvKeys.getStartedHidden) == '1',
+    invited: await kv.get(KvKeys.inviteShared) == '1',
+  );
+});
 
 class _Step {
-  const _Step(this.id, this.title, this.subtitle, this.done, this.route,
-      {this.tab = false});
+  const _Step(
+    this.id,
+    this.title,
+    this.subtitle,
+    this.done,
+    this.route, {
+    this.tab = false,
+  });
   final String id;
   final String title;
   final String subtitle;
@@ -33,14 +41,21 @@ class _Step {
 
 /// The first-week tour: five things that show what ClearSkin does, each one
 /// tap away. It ticks itself from real use and leaves once everything is
-/// done, or when hidden.
+/// done, when hidden, or after the first [days]: past that, a checklist at
+/// the top of Today is a nag, not a tour.
 class GetStartedCard extends ConsumerWidget {
   const GetStartedCard({super.key});
+
+  static const days = 14;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final flags = ref.watch(getStartedFlagsProvider).value;
     if (flags == null || flags.hidden) return const SizedBox.shrink();
+    final since = ref.watch(profileProvider).value?.createdAt;
+    if (since != null && clock.now().difference(since).inDays >= days) {
+      return const SizedBox.shrink();
+    }
     final steps = [
       _Step(
         'scan',
@@ -93,10 +108,7 @@ class GetStartedCard extends ConsumerWidget {
             children: [
               const Eyebrow('Get started'),
               const Spacer(),
-              Text(
-                '$done of ${steps.length}',
-                style: context.text.labelMedium,
-              ),
+              Text('$done of ${steps.length}', style: context.text.labelMedium),
             ],
           ),
           const SizedBox(height: Space.sm),

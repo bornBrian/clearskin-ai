@@ -73,16 +73,23 @@ class TodayScreen extends ConsumerWidget {
                           const _ScoreHero()
                         else
                           const FirstScanCard(),
+                        // Anything that could hurt their skin comes first.
                         const _RedFlagBanner(),
+                        const _ConflictAlert(),
                         if (hasScan) const _TopNudge(),
                         const SizedBox(height: Space.xl),
+                        // New people see how far they are, near the top;
+                        // it hides itself once everything is done.
+                        const GetStartedCard(),
                         const StreakLine(),
                         const SizedBox(height: Space.lg),
                         const _TodayRoutine(),
+                        // Right after the routine, while they're already
+                        // here: the other daily habit.
+                        const _CheckInRow(),
                         const SizedBox(height: Space.md),
                         const _PlanCard(),
                         const SizedBox(height: Space.xl),
-                        const GetStartedCard(),
                         const WaterCard(),
                         const SizedBox(height: Space.xl),
                         const _Forecast(),
@@ -90,7 +97,6 @@ class TodayScreen extends ConsumerWidget {
                         const SizedBox(height: Space.xl),
                         const ForYouCarousel(),
                         const SizedBox(height: Space.lg),
-                        const _ConflictAlert(),
                         const _MoreRows(),
                       ]
                       .animate(interval: 35.ms)
@@ -536,18 +542,49 @@ class _ConflictAlert extends ConsumerWidget {
         .toList();
     if (conflicts.isEmpty) return const SizedBox.shrink();
     final c = context.colors;
-    return LineItem(
-      title: conflicts.first.title,
-      subtitle: conflicts.length > 1
-          ? '${conflicts.length} shelf alerts'
-          : 'Shelf alert',
-      leading: Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(color: c.warn, shape: BoxShape.circle),
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.lg),
+      child: LineItem(
+        title: conflicts.first.title,
+        subtitle: conflicts.length > 1
+            ? '${conflicts.length} shelf alerts'
+            : 'Shelf alert',
+        divider: false,
+        leading: Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: c.warn, shape: BoxShape.circle),
+        ),
+        trailing: Icon(Icons.chevron_right_rounded, color: c.inkFaint),
+        onTap: () => context.go('/shelf'),
       ),
-      trailing: Icon(Icons.chevron_right_rounded, color: c.inkFaint),
-      onTap: () => context.go('/shelf'),
+    );
+  }
+}
+
+class _CheckInRow extends ConsumerWidget {
+  const _CheckInRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.colors;
+    final today = ref.watch(todayCheckInProvider);
+    final report = ref.watch(insightsProvider);
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.xs),
+      child: LineItem(
+        title: today == null ? 'Daily check-in' : 'Checked in today',
+        subtitle: today == null
+            ? (report.ready
+                  ? 'Ten seconds'
+                  : '${report.daysNeeded} more to find your triggers')
+            : '${today.sleepHours.toStringAsFixed(today.sleepHours % 1 == 0 ? 0 : 1)}h sleep · stress ${today.stress}/5',
+        divider: false,
+        trailing: today == null
+            ? Icon(Icons.chevron_right_rounded, color: c.inkFaint)
+            : Icon(Icons.check_rounded, color: c.leaf),
+        onTap: () => context.push('/checkin'),
+      ),
     );
   }
 }
@@ -558,24 +595,10 @@ class _MoreRows extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.colors;
-    final today = ref.watch(todayCheckInProvider);
-    final report = ref.watch(insightsProvider);
     final premium = ref.watch(premiumProvider);
     final chevron = Icon(Icons.chevron_right_rounded, color: c.inkFaint);
     return Column(
       children: [
-        LineItem(
-          title: today == null ? 'Daily check-in' : 'Checked in today',
-          subtitle: today == null
-              ? (report.ready
-                    ? 'Ten seconds'
-                    : '${report.daysNeeded} more to find your triggers')
-              : '${today.sleepHours.toStringAsFixed(today.sleepHours % 1 == 0 ? 0 : 1)}h sleep · stress ${today.stress}/5',
-          trailing: today == null
-              ? chevron
-              : Icon(Icons.check_rounded, color: c.leaf),
-          onTap: () => context.push('/checkin'),
-        ),
         LineItem(
           title: 'Skin guides',
           subtitle: 'Budget, food, water, weather, bedding',
