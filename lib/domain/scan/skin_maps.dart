@@ -313,10 +313,7 @@ class SkinMaps {
       final even = clamp01(1 - (deltaE[i] - 1) / 4);
       final lift = clamp01((lMid[i] - lLocal[i] - 0.5) / 3);
       raw[SkinLens.radiance]![i] =
-          even *
-          (0.6 + 0.4 * lift) *
-          (1 - raw[SkinLens.shine]![i]) *
-          inner;
+          even * (0.6 + 0.4 * lift) * (1 - raw[SkinLens.shine]![i]) * inner;
       raw[SkinLens.texture]![i] =
           clamp01((energy[i] / medE - 1.25) / 1.5) *
           inner *
@@ -326,7 +323,8 @@ class SkinMaps {
     // ── Smooth into regions, then read coverage per face zone.
     final centers = <(String, Offset)>[
       for (final z in _zones)
-        for (final c in FaceZones.centers(z, g)) (z, Offset(c.dx * w, c.dy * h)),
+        for (final c in FaceZones.centers(z, g))
+          (z, Offset(c.dx * w, c.dy * h)),
     ];
     final zoneOf = Int8List(n)..fillRange(0, n, -1);
     for (var y = 0; y < h; y++) {
@@ -406,7 +404,9 @@ class SkinMaps {
       for (var i = 0; i < n; i++)
         if (mask[i] == 1 && raw[SkinLens.shine]![i] < 0.3) lMid[i] - lLocal[i],
     ]..sort();
-    final catchLight = lifts.isEmpty ? 0.0 : lifts[(lifts.length * 0.9).floor()];
+    final catchLight = lifts.isEmpty
+        ? 0.0
+        : lifts[(lifts.length * 0.9).floor()];
     // Mean, not median: scattered marks over a minority of the face still
     // make it look uneven.
     var sumDE = 0.0;
@@ -416,7 +416,8 @@ class SkinMaps {
     // ~1.5 ΔE is camera noise on even skin; 6.5 is visibly blotchy.
     final evenness = 100 * clamp01(1 - (sumDE / skin - 1.5) / 5);
     final blemish =
-        readings[SkinLens.redness]!.coverage + readings[SkinLens.tone]!.coverage;
+        readings[SkinLens.redness]!.coverage +
+        readings[SkinLens.tone]!.coverage;
     final clarity = 100 * clamp01(1 - blemish / 0.12);
     final harsh = readings[SkinLens.shine]!.coverage;
     final sheen =
@@ -567,7 +568,8 @@ class SkinMaps {
     cx /= poly.length;
     cy /= poly.length;
     return [
-      for (final p in poly) Offset(cx + (p.dx - cx) * sx, cy + (p.dy - cy) * sy),
+      for (final p in poly)
+        Offset(cx + (p.dx - cx) * sx, cy + (p.dy - cy) * sy),
     ];
   }
 

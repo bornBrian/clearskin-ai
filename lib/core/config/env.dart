@@ -93,6 +93,12 @@ abstract final class Env {
     'EXPECTED_SIGNING_SHA256',
   );
 
+  // ── Store review ─────────────────────────────────────────────────────
+  /// The one address that signs in with a password instead of an emailed
+  /// code, for Google Play's reviewers, who can't receive codes. Its
+  /// password lives only in Supabase and the Play Console form.
+  static const reviewEmail = String.fromEnvironment('REVIEW_EMAIL');
+
   static bool get hasBackend =>
       supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;
 

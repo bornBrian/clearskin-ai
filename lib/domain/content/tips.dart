@@ -84,7 +84,10 @@ abstract final class TipLibrary {
       kind: TipKind.ingredients,
       image: '$_p/serum_pink.webp',
       points: [
-        TipPoint('Only some products purge', 'Retinoids and exfoliating acids.'),
+        TipPoint(
+          'Only some products purge',
+          'Retinoids and exfoliating acids.',
+        ),
         TipPoint('Same spots, faster', 'Where you usually break out.'),
         TipPoint('Gone in 4–6 weeks', 'If not, the product isn\'t for you.'),
       ],
@@ -98,7 +101,10 @@ abstract final class TipLibrary {
       kind: TipKind.basics,
       image: '$_p/droplets.webp',
       points: [
-        TipPoint('Patch it', 'Hydrocolloid patches flatten whiteheads overnight.'),
+        TipPoint(
+          'Patch it',
+          'Hydrocolloid patches flatten whiteheads overnight.',
+        ),
         TipPoint('Warm compress', 'Eases deep, painful spots.'),
         TipPoint('Get help for cysts', 'Prescriptions prevent scarring.'),
       ],
@@ -132,7 +138,10 @@ abstract final class TipLibrary {
       image: '$_p/serum_plates.webp',
       points: [
         TipPoint('Same routine is OK', 'The warning came from old lab tests.'),
-        TipPoint('Tingles? Split them', 'Vitamin C morning, niacinamide night.'),
+        TipPoint(
+          'Tingles? Split them',
+          'Vitamin C morning, niacinamide night.',
+        ),
         TipPoint('Real clashes', 'Retinoids with acids. We flag these.'),
       ],
       concerns: {Concern.darkSpots, Concern.oiliness, Concern.unevenTone},
@@ -145,7 +154,10 @@ abstract final class TipLibrary {
       image: '$_p/dropper_amber.webp',
       forDeeperTones: true,
       points: [
-        TipPoint('SPF without white cast', 'The one you\'ll actually wear daily.'),
+        TipPoint(
+          'SPF without white cast',
+          'The one you\'ll actually wear daily.',
+        ),
         TipPoint('Gentle brighteners', 'Azelaic acid, niacinamide, vitamin C.'),
         TipPoint('Treat spots early', 'Fewer breakouts, fewer marks.'),
       ],

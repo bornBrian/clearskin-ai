@@ -71,9 +71,7 @@ class JourneyScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: Space.xs),
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Space.xl,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: Space.xl),
                       child: Text(
                         j.track.promise,
                         textAlign: TextAlign.center,
@@ -134,7 +132,10 @@ class JourneyScreen extends ConsumerWidget {
                                   style: context.text.titleSmall,
                                 ),
                                 const SizedBox(height: Space.xxs),
-                                Text(j.doctorNote, style: context.text.bodySmall),
+                                Text(
+                                  j.doctorNote,
+                                  style: context.text.bodySmall,
+                                ),
                               ],
                             ),
                           ),
@@ -262,13 +263,16 @@ class _PhaseRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   phase.name,
-                  style: (current
-                          ? context.text.headlineSmall
-                          : context.text.titleLarge)
-                      ?.copyWith(
-                        color: current ? c.ink : c.inkMuted,
-                        fontWeight: current ? FontWeight.w500 : FontWeight.w400,
-                      ),
+                  style:
+                      (current
+                              ? context.text.headlineSmall
+                              : context.text.titleLarge)
+                          ?.copyWith(
+                            color: current ? c.ink : c.inkMuted,
+                            fontWeight: current
+                                ? FontWeight.w500
+                                : FontWeight.w400,
+                          ),
                 ),
               ),
               Text(

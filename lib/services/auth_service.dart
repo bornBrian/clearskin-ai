@@ -282,6 +282,22 @@ class AuthService {
     }
   }
 
+  /// Password sign-in, only for [Env.reviewEmail].
+  Future<Account> signInWithPassword(String email, String password) async {
+    if (!Env.hasBackend) return _demo('email', email.trim());
+    try {
+      await Supabase.instance.client.auth.signInWithPassword(
+        email: email.trim(),
+        password: password,
+      );
+      return await _save(Account(provider: 'email', email: email.trim()));
+    } on AuthException {
+      throw const AuthFailure('That password didn\'t match. Try again.');
+    } on SocketException {
+      throw const AuthFailure('You\'re offline.');
+    }
+  }
+
   Future<void> signOut() async {
     try {
       if (_googleReady) await GoogleSignIn.instance.signOut();

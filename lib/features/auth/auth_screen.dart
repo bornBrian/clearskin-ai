@@ -360,11 +360,23 @@ class _EmailSheetState extends ConsumerState<_EmailSheet> {
   bool _busy = false;
   String? _error;
 
+  /// The store review account: a password instead of an emailed code.
+  bool get _review =>
+      Env.reviewEmail.isNotEmpty &&
+      _email.text.trim().toLowerCase() == Env.reviewEmail.toLowerCase();
+
   static final _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
   Future<void> _send() async {
     if (!_emailRe.hasMatch(_email.text.trim())) {
       setState(() => _error = 'Enter a valid email.');
+      return;
+    }
+    if (_review) {
+      setState(() {
+        _sent = true;
+        _error = null;
+      });
       return;
     }
     setState(() {
@@ -382,8 +394,12 @@ class _EmailSheetState extends ConsumerState<_EmailSheet> {
   }
 
   Future<void> _verify() async {
-    if (_code.text.trim().length < 6) {
-      setState(() => _error = 'Enter the 6-digit code.');
+    if (_review ? _code.text.isEmpty : _code.text.trim().length < 6) {
+      setState(
+        () => _error = _review
+            ? 'Enter the password.'
+            : 'Enter the 6-digit code.',
+      );
       return;
     }
     setState(() {
@@ -391,9 +407,10 @@ class _EmailSheetState extends ConsumerState<_EmailSheet> {
       _error = null;
     });
     try {
-      final a = await ref
-          .read(authServiceProvider)
-          .verifyEmailCode(_email.text, _code.text);
+      final auth = ref.read(authServiceProvider);
+      final a = _review
+          ? await auth.signInWithPassword(_email.text, _code.text)
+          : await auth.verifyEmailCode(_email.text, _code.text);
       if (mounted) Navigator.of(context).pop(a);
     } on AuthFailure catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -423,14 +440,20 @@ class _EmailSheetState extends ConsumerState<_EmailSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _sent ? 'Check your inbox' : 'Your email',
+            !_sent
+                ? 'Your email'
+                : _review
+                ? 'Your password'
+                : 'Check your inbox',
             style: context.text.headlineSmall,
           ),
           const SizedBox(height: Space.xxs),
           Text(
-            _sent
-                ? 'We sent a 6-digit code to ${_email.text.trim()}.'
-                : 'We\'ll send you a code. No password.',
+            !_sent
+                ? 'We\'ll send you a code. No password.'
+                : _review
+                ? 'This address signs in with a password.'
+                : 'We sent a 6-digit code to ${_email.text.trim()}.',
             style: context.text.bodyMedium,
           ),
           const SizedBox(height: Space.lg),
@@ -443,6 +466,16 @@ class _EmailSheetState extends ConsumerState<_EmailSheet> {
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _send(),
               decoration: const InputDecoration(hintText: 'name@email.com'),
+            )
+          else if (_review)
+            TextField(
+              controller: _code,
+              autofocus: true,
+              obscureText: true,
+              autofillHints: const [AutofillHints.password],
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _verify(),
+              decoration: const InputDecoration(hintText: 'Password'),
             )
           else
             TextField(

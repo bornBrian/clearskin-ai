@@ -34,9 +34,7 @@ class FaceMesh {
       return const FaceMesh(points: [], triangles: []);
     }
     final outline = g.contours['face'] ?? const <Offset>[];
-    final pts = <Offset>[
-      for (final c in g.contours.values) ...c,
-    ];
+    final pts = <Offset>[for (final c in g.contours.values) ...c];
     // De-duplicate shared points (ML Kit repeats lip corners).
     final unique = <Offset>[];
     for (final p in pts) {
@@ -114,7 +112,8 @@ List<Tri> delaunay(List<Offset> pts) {
         (ax * ax + ay * ay) * (bx * cy - cx * by) -
         (bx * bx + by * by) * (ax * cy - cx * ay) +
         (cx * cx + cy * cy) * (ax * by - bx * ay);
-    final orient = (b.dx - a.dx) * (c.dy - a.dy) - (b.dy - a.dy) * (c.dx - a.dx);
+    final orient =
+        (b.dx - a.dx) * (c.dy - a.dy) - (b.dy - a.dy) * (c.dx - a.dx);
     return orient > 0 ? det > 0 : det < 0;
   }
 

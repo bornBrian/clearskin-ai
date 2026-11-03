@@ -170,7 +170,10 @@ class TipScreen extends StatelessWidget {
                                 children: [
                                   const Eyebrow('Skip'),
                                   const SizedBox(height: 4),
-                                  Text(tip.avoid!, style: context.text.bodyLarge),
+                                  Text(
+                                    tip.avoid!,
+                                    style: context.text.bodyLarge,
+                                  ),
                                 ],
                               ),
                             ),
@@ -206,7 +209,9 @@ class TipScreen extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: Space.xl),
-                    const Disclaimer(text: 'General guidance, not a diagnosis.'),
+                    const Disclaimer(
+                      text: 'General guidance, not a diagnosis.',
+                    ),
                   ]
                   .animate(interval: 40.ms)
                   .fadeIn(duration: Motion.normal)
