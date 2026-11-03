@@ -1,10 +1,19 @@
 # Builds the Google Play release bundle, refusing anything unsafe to ship.
 #
-#   powershell -ExecutionPolicy Bypass -File scripts/build-release.ps1
+#   powershell -ExecutionPolicy Bypass -File scripts/build-release.ps1 -BuildNumber 3006
+#
+# -Testing is for internal and closed test uploads, before the app exists
+# long enough to have them: it skips the RevenueCat key, the app-signing
+# fingerprint and the Play Integrity project. Every other check still runs.
 #
 # Checks env/prod.json first (no sample AI, no test ad ids, billing and
 # anti-tamper configured), then builds an obfuscated, R8-shrunk AAB. Keep
 # build/symbols: it's what de-obfuscates crash reports.
+
+param(
+  [Parameter(Mandatory = $true)][int]$BuildNumber,
+  [switch]$Testing
+)
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
@@ -28,22 +37,24 @@ function Need($name) {
   }
 }
 
-foreach ($key in @(
+$required = @(
   "SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "GOOGLE_WEB_CLIENT_ID",
-  "RC_ANDROID_KEY", "PRIVACY_URL", "TERMS_URL", "SUPPORT_EMAIL",
-  "ADMOB_APP_ID", "ADMOB_BANNER_ID", "ADMOB_INTERSTITIAL_ID", "ADMOB_REWARDED_ID",
-  "EXPECTED_SIGNING_SHA256"
-)) { Need $key }
+  "PRIVACY_URL", "TERMS_URL", "SUPPORT_EMAIL",
+  "ADMOB_APP_ID", "ADMOB_BANNER_ID", "ADMOB_INTERSTITIAL_ID", "ADMOB_REWARDED_ID"
+)
+if (-not $Testing) { $required += @("RC_ANDROID_KEY", "EXPECTED_SIGNING_SHA256") }
+foreach ($key in $required) { Need $key }
 
 if ("$($config.AI_DEMO)" -eq "true") { $problems += "AI_DEMO must be false for a store build" }
 if ("$($config.PREVIEW_BUILD)" -eq "true") { $problems += "PREVIEW_BUILD must not be set for a store build" }
-if (-not "$($config.RC_ANDROID_KEY)".StartsWith("goog_")) {
+if ((-not $Testing -or "$($config.RC_ANDROID_KEY)" -ne "") -and
+    -not "$($config.RC_ANDROID_KEY)".StartsWith("goog_")) {
   $problems += "RC_ANDROID_KEY must be RevenueCat's PUBLIC Google key (goog_...), never the secret key"
 }
 foreach ($key in @("ADMOB_APP_ID", "ADMOB_BANNER_ID", "ADMOB_INTERSTITIAL_ID", "ADMOB_REWARDED_ID")) {
   if ("$($config.$key)".Contains("3940256099942544")) { $problems += "$key is Google's TEST id" }
 }
-if ([int]"0$($config.PLAY_INTEGRITY_PROJECT_NUMBER)" -le 0) {
+if (-not $Testing -and [int]"0$($config.PLAY_INTEGRITY_PROJECT_NUMBER)" -le 0) {
   $problems += "PLAY_INTEGRITY_PROJECT_NUMBER is not set (anti-tamper off)"
 }
 # Secrets must never be in the app's config.
@@ -63,6 +74,7 @@ try {
   flutter clean
   flutter build appbundle --release `
     --dart-define-from-file=env/prod.json `
+    --build-number=$BuildNumber `
     --obfuscate --split-debug-info=build/symbols
   Write-Host ""
   Write-Host "Upload: build\app\outputs\bundle\release\app-release.aab" -ForegroundColor Green

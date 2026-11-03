@@ -100,8 +100,16 @@ Android fixes a channel's sound when it's created, so if you change a sound, giv
 ## 5. Build
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/build-release.ps1
+# Internal / closed test uploads, before RevenueCat, the app-signing
+# fingerprint and Play Integrity exist:
+powershell -ExecutionPolicy Bypass -File scripts/build-release.ps1 -BuildNumber 3005 -Testing
+# Production:
+powershell -ExecutionPolicy Bypass -File scripts/build-release.ps1 -BuildNumber 3010
 ```
+
+The build number must go up on every upload, and stay above 3004 (the last GitHub tester APK).
+
+**App signing: Google holds the key** (chosen 2026-11-03). Play re-signs every install with its own key, so a copy installed from the GitHub link has a different signature: testers must **uninstall it before installing from Play** (their on-phone scans go with it). After the first upload, take the app-signing SHA-1 from Play Console → Test and release → App integrity → App signing and create an Android OAuth client for it (see Sign in with Google above), or Google sign-in fails in every Play install.
 
 It refuses to build with a missing key, sample ids or `AI_DEMO=true`, then runs `flutter build appbundle` with `--obfuscate --split-debug-info` (R8 minification and resource shrinking are on in Gradle).
 
