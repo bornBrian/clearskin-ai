@@ -85,7 +85,7 @@ class _OutOfScans extends StatelessWidget {
                 ),
                 onPressed: () =>
                     Navigator.pop(context, OutOfScansChoice.premium),
-                child: const Text('Unlimited scans with Premium'),
+                child: const Text('Scan every day with Premium'),
               ),
             ),
             if (canWatch) ...[
@@ -135,11 +135,19 @@ Future<bool> earnScanWithVideo(WidgetRef ref, BuildContext context) async {
     return false;
   }
   final before = ref.read(accountStatusProvider).value?.credits ?? 0;
-  final earned = await ref.read(adsServiceProvider).showRewarded(userId: uid);
-  ref.read(telemetryProvider).track(Ev.rewardedResult, {'earned': earned});
-  if (!earned) {
+  final outcome = await ref.read(adsServiceProvider).showRewarded(userId: uid);
+  ref.read(telemetryProvider).track(Ev.rewardedResult, {
+    'earned': outcome == RewardedOutcome.earned,
+    'outcome': outcome.name,
+  });
+  if (outcome != RewardedOutcome.earned) {
     if (context.mounted) {
-      showSnack(context, 'Watch to the end to unlock your extra scan.');
+      showSnack(
+        context,
+        outcome == RewardedOutcome.skipped
+            ? 'Watch to the end to unlock your extra scan.'
+            : 'No video available right now. Try again later.',
+      );
     }
     return false;
   }

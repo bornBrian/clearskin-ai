@@ -9,6 +9,16 @@ import '../data/repositories/repositories.dart';
 
 enum AdPlacement { banner, interstitial, rewarded }
 
+enum RewardedOutcome {
+  earned,
+
+  /// Closed before the end.
+  skipped,
+
+  /// No video to show: no fill, no consent yet, or offline.
+  unavailable,
+}
+
 /// AdMob for free users. Premium users never load the SDK's ads at all.
 ///
 /// Rules this follows:
@@ -175,15 +185,14 @@ class AdsService {
 
   // ── Rewarded: one extra scan ─────────────────────────────────────────
 
-  /// Loads and shows a rewarded video. Resolves true once the person has
-  /// watched enough to earn the reward. The scan credit itself is granted
+  /// Loads and shows a rewarded video. The scan credit itself is granted
   /// by our server when Google's signed callback arrives, keyed to
   /// [userId]; the app only waits for it.
-  Future<bool> showRewarded({required String userId}) async {
+  Future<RewardedOutcome> showRewarded({required String userId}) async {
     final unit = unitFor(AdPlacement.rewarded);
-    if (unit == null) return false;
+    if (unit == null) return RewardedOutcome.unavailable;
     if (!_started) await start(minor: _minor);
-    if (!_canRequest) return false;
+    if (!_canRequest) return RewardedOutcome.unavailable;
 
     final loaded = Completer<RewardedAd?>();
     await RewardedAd.load(
@@ -201,21 +210,25 @@ class AdsService {
       const Duration(seconds: 20),
       onTimeout: () => null,
     );
-    if (ad == null) return false;
+    if (ad == null) return RewardedOutcome.unavailable;
 
     await ad.setServerSideOptions(
       ServerSideVerificationOptions(userId: userId),
     );
-    final done = Completer<bool>();
+    final done = Completer<RewardedOutcome>();
     var earned = false;
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
-        if (!done.isCompleted) done.complete(earned);
+        if (!done.isCompleted) {
+          done.complete(
+            earned ? RewardedOutcome.earned : RewardedOutcome.skipped,
+          );
+        }
       },
       onAdFailedToShowFullScreenContent: (ad, _) {
         ad.dispose();
-        if (!done.isCompleted) done.complete(false);
+        if (!done.isCompleted) done.complete(RewardedOutcome.unavailable);
       },
     );
     await ad.show(onUserEarnedReward: (_, _) => earned = true);

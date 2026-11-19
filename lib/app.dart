@@ -11,6 +11,7 @@ import 'data/repositories/repositories.dart';
 import 'features/lock/lock_screen.dart';
 import 'features/lock/tampered_screen.dart';
 import 'services/security_service.dart';
+import 'services/telemetry.dart';
 
 /// Whether the app is currently behind the biometric lock.
 class LockNotifier extends Notifier<bool> {
@@ -72,7 +73,14 @@ class _ClearSkinAppState extends ConsumerState<ClearSkinApp>
 
   /// A re-signed APK (someone unpacked and modified the app) stops here.
   Future<void> _checkTrust() async {
-    final trust = await ref.read(securityServiceProvider).appTrust();
+    final security = ref.read(securityServiceProvider);
+    final trust = await security.appTrust();
+    if (trust == AppTrust.unexpectedSigner) {
+      ref.read(telemetryProvider).track(Ev.appError, {
+        'type': 'UnexpectedSigner',
+        'message': security.unexpectedSigners.join(','),
+      });
+    }
     if (trust == AppTrust.tampered && mounted) {
       setState(() => _tampered = true);
     }

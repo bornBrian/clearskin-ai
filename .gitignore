@@ -75,3 +75,6 @@ screens/
 # Motion ads: dependencies and the copied/resized inputs (see tool/ads/motion)
 tool/ads/motion/node_modules/
 tool/ads/motion/public/
+
+# Personal Claude Code settings
+.claude/settings.local.json

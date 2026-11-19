@@ -156,7 +156,7 @@ class SettingsScreen extends ConsumerWidget {
                             Text(
                               premium
                                   ? _planLine(sub)
-                                  : 'Unlimited scans, coach, no ads',
+                                  : 'Daily scans, coach, no ads',
                               style: context.text.bodySmall?.copyWith(
                                 color: BrandColors.cream.withValues(alpha: 0.6),
                               ),

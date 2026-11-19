@@ -386,23 +386,33 @@ class _SignedIn extends AccountNotifier {
 
 class _Purchases extends PurchasesService {
   @override
+  // Tanzanian prices: the longest strings the paywall really shows.
   Future<List<Plan>> plans() async => const [
     Plan(
       package: null,
       title: 'Yearly',
-      priceString: r'$39.99',
+      priceString: 'TSh 59,000',
       periodLabel: 'year',
-      pricePerWeek: 0.77,
-      pricePerWeekString: r'$0.77',
+      pricePerWeek: 1135,
+      pricePerWeekString: 'TSh 1,135',
       trialDays: 3,
     ),
     Plan(
       package: null,
       title: 'Monthly',
-      priceString: r'$9.99',
+      priceString: 'TSh 9,900',
       periodLabel: 'month',
-      pricePerWeek: 2.31,
-      pricePerWeekString: r'$2.31',
+      pricePerWeek: 2286,
+      pricePerWeekString: 'TSh 2,286',
+    ),
+    Plan(
+      package: null,
+      title: 'One month',
+      priceString: 'TSh 9,900',
+      periodLabel: 'month',
+      pricePerWeek: 2286,
+      pricePerWeekString: 'TSh 2,286',
+      prepaid: true,
     ),
   ];
 }

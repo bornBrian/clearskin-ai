@@ -23,6 +23,9 @@ class SecurityService {
   String? _deviceHash;
   AppTrust? _trust;
 
+  /// The certificates seen when [appTrust] is [AppTrust.unexpectedSigner].
+  List<String> unexpectedSigners = const [];
+
   bool get _android => defaultTargetPlatform == TargetPlatform.android;
   bool get _ios => defaultTargetPlatform == TargetPlatform.iOS;
 
@@ -165,10 +168,17 @@ class SecurityService {
           .where((s) => s.isNotEmpty)
           .toSet();
       final genuine = digests.any((d) => expected.contains(d.toUpperCase()));
-      if (!genuine || info?['debuggable'] == true) {
-        return _trust = AppTrust.tampered;
+      if (info?['debuggable'] == true) return _trust = AppTrust.tampered;
+      if (genuine) return _trust = AppTrust.genuine;
+      // Installed by the Play Store yet signed by a certificate we don't
+      // expect (seen on an OPPO Find X6 Pro). Report it instead of locking
+      // out someone who did everything right; Play Integrity on the server
+      // still keeps modified copies away from the AI.
+      if (info?['installer'] == 'com.android.vending') {
+        unexpectedSigners = digests;
+        return _trust = AppTrust.unexpectedSigner;
       }
-      return _trust = AppTrust.genuine;
+      return _trust = AppTrust.tampered;
     } on PlatformException {
       return _trust = AppTrust.unchecked;
     } on MissingPluginException {
@@ -196,6 +206,9 @@ typedef AppAttestRegistrar = Future<AttestRegistration> Function(
 enum AppTrust {
   genuine,
   tampered,
+
+  /// From the Play Store, but not signed by a certificate we know.
+  unexpectedSigner,
 
   /// Debug build, tests, or no expected certificate configured.
   unchecked,

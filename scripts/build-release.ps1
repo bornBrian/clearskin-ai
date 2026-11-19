@@ -54,7 +54,7 @@ if ((-not $Testing -or "$($config.RC_ANDROID_KEY)" -ne "") -and
 foreach ($key in @("ADMOB_APP_ID", "ADMOB_BANNER_ID", "ADMOB_INTERSTITIAL_ID", "ADMOB_REWARDED_ID")) {
   if ("$($config.$key)".Contains("3940256099942544")) { $problems += "$key is Google's TEST id" }
 }
-if (-not $Testing -and [int]"0$($config.PLAY_INTEGRITY_PROJECT_NUMBER)" -le 0) {
+if (-not $Testing -and [long]"0$($config.PLAY_INTEGRITY_PROJECT_NUMBER)" -le 0) {
   $problems += "PLAY_INTEGRITY_PROJECT_NUMBER is not set (anti-tamper off)"
 }
 # Secrets must never be in the app's config.
@@ -76,6 +76,10 @@ try {
     --dart-define-from-file=env/prod.json `
     --build-number=$BuildNumber `
     --obfuscate --split-debug-info=build/symbols
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "Build failed. Nothing to upload." -ForegroundColor Red
+    exit 1
+  }
   Write-Host ""
   Write-Host "Upload: build\app\outputs\bundle\release\app-release.aab" -ForegroundColor Green
   Write-Host "Keep:   build\symbols (crash de-obfuscation)" -ForegroundColor Green

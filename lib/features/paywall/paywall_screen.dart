@@ -211,32 +211,21 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                               _TrialTimeline(days: trial),
                               const SizedBox(height: Space.xl),
                             ],
-                            IntrinsicHeight(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  for (var i = 0; i < list.length; i++) ...[
-                                    if (i > 0) const SizedBox(width: Space.sm),
-                                    Expanded(
-                                      child: _PlanTile(
-                                        plan: list[i],
-                                        selected: _selected == list[i],
-                                        best: i == 0,
-                                        savings: maxWeekly <= 0
-                                            ? 0
-                                            : ((1 -
-                                                          list[i].pricePerWeek /
-                                                              maxWeekly) *
-                                                      100)
-                                                  .round(),
-                                        onTap: () =>
-                                            setState(() => _selected = list[i]),
-                                      ),
-                                    ),
-                                  ],
-                                ],
+                            for (var i = 0; i < list.length; i++) ...[
+                              if (i > 0) const SizedBox(height: Space.sm),
+                              _PlanTile(
+                                plan: list[i],
+                                selected: _selected == list[i],
+                                best: i == 0,
+                                savings: maxWeekly <= 0
+                                    ? 0
+                                    : ((1 - list[i].pricePerWeek / maxWeekly) *
+                                              100)
+                                          .round(),
+                                onTap: () =>
+                                    setState(() => _selected = list[i]),
                               ),
-                            ),
+                            ],
                             if (trial != null)
                               SwitchListTile(
                                 contentPadding: EdgeInsets.zero,
@@ -362,7 +351,7 @@ class _Comparison extends StatelessWidget {
   final String? lead;
 
   static const _rows = [
-    ('Skin scans', '2 a month', 'Unlimited'),
+    ('Skin scans', '2 a month', 'Every day'),
     ('Ads', 'Yes', 'None'),
     ('Skin coach', null, '✓'),
     ('Before & after', null, '✓'),
@@ -480,28 +469,33 @@ class _TrialTimeline extends StatelessWidget {
       children: [
         for (var i = 0; i < steps.length; i++)
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // A hairline above each step, solid for today: no dots.
-                Container(
-                  height: 1.5,
-                  margin: const EdgeInsets.only(right: Space.sm),
-                  color: cream.withValues(alpha: i == 0 ? 1 : 0.25),
-                ),
-                const SizedBox(height: Space.sm),
-                Text(
-                  steps[i].$1,
-                  style: context.text.titleSmall?.copyWith(color: cream),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  steps[i].$2,
-                  style: context.text.bodySmall?.copyWith(
-                    color: cream.withValues(alpha: 0.55),
+            // The gap between steps also keeps their text apart.
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: i < steps.length - 1 ? Space.md : 0,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // A hairline above each step, solid for today: no dots.
+                  Container(
+                    height: 1.5,
+                    color: cream.withValues(alpha: i == 0 ? 1 : 0.25),
                   ),
-                ),
-              ],
+                  const SizedBox(height: Space.sm),
+                  Text(
+                    steps[i].$1,
+                    style: context.text.titleSmall?.copyWith(color: cream),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    steps[i].$2,
+                    style: context.text.bodySmall?.copyWith(
+                      color: cream.withValues(alpha: 0.55),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
       ],
@@ -534,7 +528,10 @@ class _PlanTile extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: Motion.fast,
-          padding: const EdgeInsets.all(Space.md),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Space.md,
+            vertical: Space.md,
+          ),
           decoration: BoxDecoration(
             color: selected ? cream.withValues(alpha: 0.08) : null,
             borderRadius: BorderRadius.circular(Radii.md),
@@ -543,51 +540,65 @@ class _PlanTile extends StatelessWidget {
               width: selected ? 1.5 : 1,
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          // One row per plan: name and weekly cost on the left, the real
+          // price on the right. Full width, so long currencies (TSh 59,000,
+          // Rp 1.499.000) stay on one line.
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Text(
-                    plan.title.toUpperCase(),
-                    style: context.text.labelSmall?.copyWith(
-                      color: cream.withValues(alpha: 0.7),
-                      letterSpacing: 1.2,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text.rich(
+                      TextSpan(
+                        text: plan.title,
+                        children: [
+                          if (best && savings >= 10)
+                            TextSpan(
+                              text: '   Save $savings%',
+                              style: context.text.labelMedium?.copyWith(
+                                color: cream,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                        ],
+                      ),
+                      style: context.text.titleMedium?.copyWith(color: cream),
                     ),
-                  ),
-                  const Spacer(),
-                  if (best && savings >= 10)
+                    const SizedBox(height: 2),
                     Text(
-                      '−$savings%',
-                      style: context.text.labelMedium?.copyWith(
-                        color: cream,
-                        fontWeight: FontWeight.w700,
+                      plan.prepaid
+                          ? 'Pay once, no renewal'
+                          : plan.pricePerWeekString == null
+                          ? ''
+                          : '${plan.pricePerWeekString} a week',
+                      style: context.text.bodySmall?.copyWith(
+                        color: cream.withValues(alpha: 0.6),
                       ),
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: Space.md),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    plan.priceString,
+                    maxLines: 1,
+                    style: context.text.titleMedium?.copyWith(
+                      color: cream,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    plan.prepaid ? 'once' : 'a ${plan.periodLabel}',
+                    style: context.text.bodySmall?.copyWith(
+                      color: cream.withValues(alpha: 0.6),
+                    ),
+                  ),
                 ],
-              ),
-              const SizedBox(height: Space.md),
-              Text(
-                plan.pricePerWeekString ?? plan.priceString,
-                style: context.text.headlineMedium?.copyWith(
-                  color: cream,
-                  fontWeight: FontWeight.w300,
-                ),
-              ),
-              Text(
-                plan.pricePerWeekString == null ? '' : 'a week',
-                style: context.text.bodySmall?.copyWith(
-                  color: cream.withValues(alpha: 0.55),
-                ),
-              ),
-              const SizedBox(height: Space.sm),
-              Text(
-                plan.prepaid
-                    ? '${plan.priceString} once'
-                    : '${plan.priceString} / ${plan.periodLabel}',
-                style: context.text.labelMedium?.copyWith(
-                  color: cream.withValues(alpha: 0.8),
-                ),
               ),
             ],
           ),

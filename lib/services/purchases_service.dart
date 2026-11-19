@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:purchases_flutter/purchases_flutter.dart' hide SubscriptionInfo;
 
 import '../core/config/env.dart';
@@ -158,8 +159,13 @@ class PurchasesService {
     if (current == null || current.availablePackages.isEmpty) {
       throw const PlansUnavailable(PlansIssue.noProducts);
     }
-    return current.availablePackages.map(_toPlan).toList()
-      ..sort((a, b) => a.pricePerWeek.compareTo(b.pricePerWeek));
+    // Cheapest per week first; at the same price, the renewing plan before
+    // the prepaid one.
+    return current.availablePackages.map(_toPlan).toList()..sort(
+      (a, b) => a.pricePerWeek != b.pricePerWeek
+          ? a.pricePerWeek.compareTo(b.pricePerWeek)
+          : (a.prepaid ? 1 : 0) - (b.prepaid ? 1 : 0),
+    );
   }
 
   Future<PurchaseOutcome> purchase(Plan plan) async {
@@ -222,16 +228,22 @@ class PurchasesService {
 
   Plan _toPlan(Package p) {
     final product = p.storeProduct;
-    final (title, period) = switch (p.packageType) {
+    final prepaid = product.defaultOption?.isPrepaid ?? false;
+    // Custom packages (the prepaid plan) carry no type, so read the period
+    // from the store product instead: Google's ISO 8601 "P1M", "P1Y"...
+    final type = p.packageType == PackageType.custom
+        ? _typeFor(product.subscriptionPeriod)
+        : p.packageType;
+    final (title, period) = switch (type) {
       PackageType.annual => ('Yearly', 'year'),
       PackageType.sixMonth => ('6 months', '6 months'),
       PackageType.threeMonth => ('3 months', '3 months'),
-      PackageType.monthly => ('Monthly', 'month'),
+      PackageType.monthly => (prepaid ? 'One month' : 'Monthly', 'month'),
       PackageType.weekly => ('Weekly', 'week'),
       PackageType.lifetime => ('Lifetime', 'once'),
       _ => (product.title, ''),
     };
-    final weeks = switch (p.packageType) {
+    final weeks = switch (type) {
       PackageType.annual => 52.0,
       PackageType.sixMonth => 26.0,
       PackageType.threeMonth => 13.0,
@@ -240,17 +252,48 @@ class PurchasesService {
       PackageType.weekly => 1.0,
       _ => 1.0,
     };
+    final weekly = product.pricePerWeek ?? product.price / weeks;
     return Plan(
       package: p,
       title: title,
-      priceString: product.priceString,
+      priceString: tidyPrice(product.priceString),
       periodLabel: period,
-      pricePerWeek: product.pricePerWeek ?? product.price / weeks,
-      pricePerWeekString: product.pricePerWeekString,
+      pricePerWeek: weekly,
+      pricePerWeekString: weeklyPrice(product.priceString, weekly),
       trialDays: _trialDays(product),
-      prepaid: product.defaultOption?.isPrepaid ?? false,
+      prepaid: prepaid,
     );
   }
+
+  /// "TSh 9,900.00" → "TSh 9,900". Whole amounts drop the zero cents.
+  @visibleForTesting
+  static String tidyPrice(String price) =>
+      price.replaceFirst(RegExp(r'[.,]00(?=\D*$)'), '');
+
+  /// A weekly amount in the store's own currency style ("TSh 2,286",
+  /// "$1.15"). The store's own weekly string uses the ISO code and keeps
+  /// cents, which reads badly for currencies like TZS.
+  @visibleForTesting
+  static String weeklyPrice(String storePrice, double weekly) {
+    final first = storePrice.indexOf(RegExp(r'\d'));
+    final last = storePrice.lastIndexOf(RegExp(r'\d'));
+    if (first < 0) return storePrice;
+    final amount = NumberFormat.decimalPatternDigits(
+      decimalDigits: weekly < 10 ? 2 : 0,
+    ).format(weekly);
+    return '${storePrice.substring(0, first)}$amount'
+        '${storePrice.substring(last + 1)}';
+  }
+
+  static PackageType _typeFor(String? isoPeriod) => switch (isoPeriod) {
+    'P1Y' || 'P12M' => PackageType.annual,
+    'P6M' => PackageType.sixMonth,
+    'P3M' => PackageType.threeMonth,
+    'P2M' => PackageType.twoMonth,
+    'P1M' || 'P4W' => PackageType.monthly,
+    'P1W' || 'P7D' => PackageType.weekly,
+    _ => PackageType.unknown,
+  };
 
   int? _trialDays(StoreProduct product) {
     // Google Play: free trial is a pricing phase on the subscription option.
